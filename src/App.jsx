@@ -1,3 +1,4 @@
+import { onEpisodeWatched } from "./mobile/smartDownloads.js";
 import { getMyRating, useLibraryExtras, K_RATINGS } from "./mobile/libraryExtras.js";
 import {
   useState,
@@ -737,6 +738,7 @@ export default function App() {
       },
       refreshHome: () => sbNavRef.current.refreshHome?.(),
       selected: () => sbNavRef.current.selected,
+      markWatched: (key) => sbNavRef.current.markWatched?.(key),
     };
     return () => {
       delete window.__sbNav;
@@ -961,12 +963,15 @@ export default function App() {
   }, []); // no deps needed
 
   const markWatched = useCallback((key) => {
+    if (window.electron?.isMobile) onEpisodeWatched(key);
     setWatched((prev) => {
       const next = { ...prev, [key]: true };
       storage.set("watched", next);
       return next;
     });
   }, []);
+
+  sbNavRef.current.markWatched = markWatched;
 
   const markUnwatched = useCallback((key) => {
     setWatched((prev) => {

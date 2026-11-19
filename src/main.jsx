@@ -11,7 +11,11 @@ import { initEpisodeWatch } from "./mobile/episodeWatch.js";
 import { initProfiles } from "./mobile/profiles.js";
 import { initWidgetSync } from "./mobile/widgetSync.js";
 import { initCloudSync } from "./mobile/cloudSync.js";
+import { initI18n } from "./mobile/i18n.js";
+import { initMotion } from "./mobile/motion.js";
 
+initI18n();
+initMotion();
 initTvNav();
 if (window.electron?.isMobile) {
   initPullToRefresh();

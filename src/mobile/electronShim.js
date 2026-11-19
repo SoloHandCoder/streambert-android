@@ -388,6 +388,8 @@ const electron = {
   checkDownloader: async () => ({ exists: true, token: "android-native" }),
   runDownload: safe(async (args) => {
     await pathsReady;
+    const full = await (await import("./smartDownloads.js")).storageLimitReached();
+    if (full) return { ok: false, error: full };
     const headers = {};
     const referer = hianime.hianimeReferers.get(args.m3u8Url);
     const fm = frameStreamMeta.get(args.m3u8Url);
@@ -417,6 +419,13 @@ const electron = {
   voiceSearch: async () => (await P.voiceSearch({ prompt: "Say a movie or show" }))?.text || "",
   resumeDownload: safe((id) => P.resumeDownload({ id })),
   getDownloadsSize: safe(() => P.getDownloadsSize(), { bytes: 0 }),
+  networkInfo: async () => {
+    try {
+      return await P.networkInfo();
+    } catch {
+      return { connected: true, unmetered: false };
+    }
+  },
   showInFolder: async (path) => {
     if (path) await P.openInPlayer({ url: path, title: "" });
   },

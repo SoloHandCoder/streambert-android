@@ -374,6 +374,27 @@ public class StreambertPlugin extends Plugin {
         call.resolve(r);
     }
 
+    /** connected / unmetered (Wi-Fi, Ethernet) right now */
+    @PluginMethod
+    public void networkInfo(PluginCall call) {
+        JSObject r = new JSObject();
+        boolean connected = false, unmetered = false;
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager) getContext().getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
+            android.net.Network n = cm.getActiveNetwork();
+            android.net.NetworkCapabilities c = n != null ? cm.getNetworkCapabilities(n) : null;
+            if (c != null && c.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+                connected = true;
+                unmetered = c.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+                        || c.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI)
+                        || c.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET);
+            }
+        } catch (Exception ignored) {}
+        r.put("connected", connected);
+        r.put("unmetered", unmetered);
+        call.resolve(r);
+    }
+
     @PluginMethod
     public void getDownloadsSize(PluginCall call) {
         io.execute(() -> {

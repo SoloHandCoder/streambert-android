@@ -162,7 +162,7 @@ function CalendarPage({ items, onClose, onSelect, onRefresh }) {
             <div className="sbu-day-head">
               <span className={daysUntil(g.date) <= 1 ? "soon" : ""}>{dayLabel(g.date)}</span>
               <span className="sbx-muted">
-                {new Date(g.date + "T12:00:00").toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
+                {new Date(g.date + "T12:00:00").toLocaleDateString(document.documentElement.lang || undefined, { day: "numeric", month: "long", year: "numeric" })}
               </span>
             </div>
             <div className="history-rows">

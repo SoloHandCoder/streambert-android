@@ -1787,3 +1787,95 @@ html[data-mobile] .sidebar ~ * #sb-season-dl {
     padding: 10px 18px;
     font: 500 14px var(--font-body);
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tablets & unfolded foldables: desktop-style sidebar
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (min-width: 768px) and (min-height: 560px) {
+    html[data-mobile] {
+        --sidebar: 84px;
+        --m-pad: 28px;
+    }
+    html[data-mobile] .sidebar,
+    html[data-mobile][data-win-titlebar] .sidebar,
+    html[data-mobile][data-win-titlebar][data-maximized] .sidebar {
+        top: 0 !important;
+        left: 0 !important;
+        right: auto !important;
+        bottom: 0 !important;
+        width: calc(var(--sidebar) + var(--m-safe-l));
+        height: auto;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 4px;
+        padding: calc(14px + var(--m-safe-t)) 0 calc(12px + var(--m-safe-b)) var(--m-safe-l);
+        border-top: none;
+        border-right: 1px solid var(--border);
+        background: var(--surface);
+    }
+    /* logo and saved titles like the desktop app */
+    html[data-mobile] .sidebar-logo {
+        display: block !important;
+        width: 48px;
+        height: 48px;
+        margin-bottom: 10px;
+        order: 0;
+    }
+    html[data-mobile] .sidebar-saved {
+        display: flex !important;
+        order: 6;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        width: 100%;
+        align-items: center;
+        margin-top: 6px;
+    }
+    html[data-mobile] .sidebar-sep {
+        display: block !important;
+        order: 5;
+    }
+    html[data-mobile] .sidebar-bottom {
+        order: 7;
+        margin-top: auto;
+    }
+    html[data-mobile] .sidebar-btn {
+        flex: 0 0 auto;
+        width: 76px;
+        height: 60px;
+        border-radius: 14px;
+    }
+    html[data-mobile] .main,
+    html[data-mobile][data-win-titlebar] .main,
+    html[data-mobile][data-win-titlebar][data-maximized] .main {
+        margin-left: calc(var(--sidebar) + var(--m-safe-l)) !important;
+        width: auto;
+        padding-bottom: calc(var(--m-safe-b) + 20px) !important;
+        padding-left: 0;
+    }
+    html[data-mobile][data-player-fullscreen] .main {
+        margin-left: 0 !important;
+    }
+    html[data-mobile] .toast,
+    html[data-mobile] div[style*="var(--sidebar)"][style*="position: fixed"] {
+        left: calc(var(--sidebar) + 16px) !important;
+        right: auto !important;
+        bottom: calc(16px + var(--m-safe-b)) !important;
+        max-width: 420px !important;
+    }
+    html[data-mobile] .sbx-sheet-overlay {
+        align-items: center;
+    }
+    html[data-mobile] .sbx-sheet {
+        border-radius: 18px;
+        border-bottom: 1px solid var(--border);
+    }
+    html[data-mobile] #sb-season-dl {
+        left: auto;
+        right: 20px;
+        bottom: calc(20px + var(--m-safe-b));
+        width: 420px;
+    }
+}

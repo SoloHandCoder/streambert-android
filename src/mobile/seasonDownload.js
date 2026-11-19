@@ -64,7 +64,7 @@ export async function downloadSeason(o) {
       const n = ep.episode_number;
       const e2 = String(n).padStart(2, "0");
       job.frac = i / todo.length;
-      show(`Season ${o.season}: getting episode ${n} (${i + 1}/${todo.length})…`, job.frac);
+      show(`${o.label ? o.label + " · " : ""}Season ${o.season}: getting episode ${n} (${i + 1}/${todo.length})…`, job.frac);
       let url = null;
       try {
         if (o.async) {

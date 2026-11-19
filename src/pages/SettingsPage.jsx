@@ -1,3 +1,4 @@
+import { LANGUAGES, languageSetting, setLanguageSetting, systemLanguage } from "../mobile/i18n.js";
 import AndroidDownloadSettings from "../mobile/DownloadSettings";
 import ProfilesPrivacy from "../mobile/ProfilesPrivacy";
 import CloudSyncSettings from "../mobile/CloudSyncSettings";
@@ -1856,6 +1857,32 @@ function StartPageSection() {
   );
 }
 
+// ── App language (UI) ─────────────────────────────────────────────────────────
+function AppLanguageSection() {
+  const [v, setV] = useState(languageSetting);
+  const sys = LANGUAGES.find((l) => l.code === systemLanguage())?.name || "English";
+  return (
+    <div style={{ marginBottom: 40 }}>
+      <div className="settings-section-title">App language</div>
+      <div style={{ fontSize: 13, color: "var(--text3)", marginBottom: 12, lineHeight: 1.6 }}>
+        Language of Streambert's menus and buttons. Movie and show info uses the metadata language below.
+      </div>
+      <SettingsSelect
+        value={v}
+        onChange={(x) => {
+          setV(x);
+          setLanguageSetting(x);
+          setTimeout(() => location.reload(), 150);
+        }}
+        options={[
+          { value: "system", label: `${window.electron?.isMobile ? "Phone language" : "System language"} (${sys})` },
+          ...LANGUAGES.map((l) => ({ value: l.code, label: l.name })),
+        ]}
+      />
+    </div>
+  );
+}
+
 // ── TMDB Metadata Language ────────────────────────────────────────────────────
 const TMDB_LANGUAGES = [
   { value: "en-US", label: "English (en-US)" },
@@ -3693,6 +3720,10 @@ export default function SettingsPage({
               </button>
             </div>
           </div>
+
+          <Divider />
+
+          <AppLanguageSection />
 
           <Divider />
 

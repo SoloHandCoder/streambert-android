@@ -187,7 +187,7 @@ export default function LibraryPage({
                             {" · "}
                           </>
                         )}
-                      {new Date(item.watchedAt).toLocaleDateString("en-US", {
+                      {new Date(item.watchedAt).toLocaleDateString(document.documentElement.lang || "en-US", {
                         year: "numeric",
                         month: "short",
                         day: "numeric",

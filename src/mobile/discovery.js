@@ -98,8 +98,8 @@ export function dayLabel(dateStr) {
   const diff = Math.round((d - today0()) / 86400000 - 0.5);
   if (diff <= 0) return "Today";
   if (diff === 1) return "Tomorrow";
-  if (diff < 7) return d.toLocaleDateString(undefined, { weekday: "long" });
-  return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+  if (diff < 7) return d.toLocaleDateString(document.documentElement.lang || undefined, { weekday: "long" });
+  return d.toLocaleDateString(document.documentElement.lang || undefined, { weekday: "short", day: "numeric", month: "short" });
 }
 export function daysUntil(dateStr) {
   return Math.max(0, Math.round((parseDay(dateStr) - today0()) / 86400000 - 0.5));
