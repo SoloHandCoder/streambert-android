@@ -1,0 +1,15 @@
+{
+  "appId": "com.streambert.android",
+  "appName": "Streambert",
+  "webDir": "dist",
+  "backgroundColor": "#0a0a0a",
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": false,
+    "webContentsDebuggingEnabled": false,
+    "adjustMarginsForEdgeToEdge": "force"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

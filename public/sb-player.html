@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+      video { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
+      video::cue { background: rgba(0, 0, 0, 0.6); font-size: 1.05em; }
+    </style>
+  </head>
+  <body>
+    <video id="v" controls playsinline autoplay preload="auto"></video>
+    <script src="/hls.min.js"></script>
+    <script>
+      (function () {
+        var q = new URLSearchParams(location.search);
+        var src = q.get("src");
+        var sub = q.get("sub");
+        var startTime = Number(q.get("t") || 0) || 0;
+        var video = document.getElementById("v");
+        if (sub) {
+          var tr = document.createElement("track");
+          tr.kind = "subtitles";
+          tr.src = sub;
+          tr.srclang = "en";
+          tr.label = "Subtitles";
+          tr.default = true;
+          video.appendChild(tr);
+        }
+        if (!src) return;
+        var isHls = /\.m3u8|__sbproxy/i.test(src) && !/\.mp4(\?|$)/i.test(src);
+        if (isHls && window.Hls && Hls.isSupported()) {
+          var hls = new Hls({
+            autoStartLoad: false,
+            maxBufferLength: 30,
+            maxMaxBufferLength: 120,
+            backBufferLength: 30,
+            enableWorker: true,
+          });
+          hls.loadSource(src);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.MANIFEST_PARSED, function () {
+            hls.startLevel = hls.levels.length - 1;
+            hls.startLoad(startTime > 0 ? startTime : -1);
+            video.play().catch(function () {});
+          });
+          hls.on(Hls.Events.ERROR, function (_, d) {
+            if (!d.fatal) return;
+            if (d.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
+            else if (d.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
+          });
+        } else {
+          video.src = src;
+          if (startTime > 0)
+            video.addEventListener("loadedmetadata", function () { video.currentTime = startTime; }, { once: true });
+          video.play().catch(function () {});
+        }
+      })();
+    </script>
+  </body>
+</html>
