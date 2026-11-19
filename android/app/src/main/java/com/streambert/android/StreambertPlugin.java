@@ -63,6 +63,7 @@ public class StreambertPlugin extends Plugin {
             try { notifyListeners("downloadProgress", JSObject.fromJSONObject(update)); } catch (Exception ignored) {}
         });
         DownloadService.ensureChannels(getContext());
+        try { EpisodeCheckWorker.schedule(getContext()); } catch (Exception ignored) {}
         // continue downloads interrupted by an app kill / waiting for network
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
                 () -> Downloads.get(getContext()).resumeAuto(), 3000);
@@ -571,6 +572,43 @@ public class StreambertPlugin extends Plugin {
                 call.getString("subtitle", ""), call.getDouble("position", 0.0), call.getDouble("duration", 0.0));
         MainActivity a = (MainActivity) getActivity();
         if (a != null) a.runOnUiThread(() -> a.updatePipParams(active && playing, call.getDouble("aspect", 16.0 / 9.0)));
+        call.resolve();
+    }
+
+    // ───────────── background new-episode check ─────────────
+
+    @PluginMethod
+    public void syncEpisodeWatch(PluginCall call) {
+        android.content.SharedPreferences p = getContext().getSharedPreferences(EpisodeCheckWorker.PREFS, android.content.Context.MODE_PRIVATE);
+        android.content.SharedPreferences.Editor ed = p.edit();
+        if (call.getData().has("token")) ed.putString("token", call.getString("token", ""));
+        if (call.getData().has("enabled")) ed.putBoolean("enabled", call.getBoolean("enabled", true));
+        JSArray shows = call.getArray("shows");
+        if (shows != null) ed.putString("shows", shows.toString());
+        ed.apply();
+        JSObject st = call.getObject("state");
+        if (st != null) EpisodeCheckWorker.mergeState(p, st);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void getEpisodeState(PluginCall call) {
+        android.content.SharedPreferences p = getContext().getSharedPreferences(EpisodeCheckWorker.PREFS, android.content.Context.MODE_PRIVATE);
+        JSObject r = new JSObject();
+        try { r.put("state", new JSObject(p.getString("state", "{}"))); } catch (Exception e) { r.put("state", new JSObject()); }
+        r.put("lastRun", p.getLong("lastRun", 0));
+        call.resolve(r);
+    }
+
+    @PluginMethod
+    public void runEpisodeCheckNow(PluginCall call) {
+        EpisodeCheckWorker.runNow(getContext());
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void setInterceptFullscreen(PluginCall call) {
+        SbChromeClient.interceptFullscreen = call.getBoolean("on", false);
         call.resolve();
     }
 

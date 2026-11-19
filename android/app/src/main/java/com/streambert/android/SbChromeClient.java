@@ -34,9 +34,19 @@ public class SbChromeClient extends BridgeWebChromeClient {
 
     public boolean isFullscreen() { return customView != null; }
 
+    /** true while an in-app player (Movie/TV page) is showing: its fullscreen
+     *  requests become an in-app fullscreen so the app's overlays (next-episode
+     *  countdown, skip intro) stay visible. */
+    public static volatile boolean interceptFullscreen = false;
+
     @Override
     public void onShowCustomView(View view, CustomViewCallback callback) {
         if (customView != null) { callback.onCustomViewHidden(); return; }
+        if (interceptFullscreen) {
+            callback.onCustomViewHidden();
+            StreambertPlugin.emit("webviewFullscreenRequest", true);
+            return;
+        }
         customView = view;
         customCallback = callback;
         prevOrientation = activity.getRequestedOrientation();

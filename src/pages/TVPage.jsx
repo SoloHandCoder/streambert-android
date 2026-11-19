@@ -1702,7 +1702,8 @@ export default function TVPage({
   // Videasy and HiAnime handle fullscreen internally via CSS, skip those.
   useEffect(() => {
     if (!playing) return;
-    if (!NEEDS_INTERCEPT.includes(playerSource)) return;
+    // mobile: every source uses the in-app fullscreen (keeps the app's overlays visible)
+    if (!NEEDS_INTERCEPT.includes(playerSource) && !window.electron?.isMobile) return;
     const enterH = window.electron?.onWebviewEnterFullscreen?.(() => {
       // requestFullscreen() is rejected when Electron is already in fullscreen -> use css overlay
       setPlayerFullscreen(true);

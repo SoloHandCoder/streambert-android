@@ -59,6 +59,14 @@ if (isNative) {
     delete clean._dir;
     fire("download-progress", clean);
   });
+  // embedded player asked for fullscreen while intercepting → in-app fullscreen (toggle)
+  native.on("webviewFullscreenRequest", () => {
+    if (document.documentElement.hasAttribute("data-player-fullscreen")) exitPlayerFullscreen();
+    else {
+      fire("webview-enter-fullscreen");
+      P.setFullscreen({ on: true }).catch(() => {});
+    }
+  });
   native.on("fullscreen", (d) => {
     if (!d.value) lastFsExit = Date.now();
     if (d.value) document.documentElement.setAttribute("data-native-fullscreen", "1");
@@ -68,6 +76,10 @@ if (isNative) {
 }
 
 const postProcessed = new Set();
+function exitPlayerFullscreen() {
+  fire("webview-leave-fullscreen");
+  P.setFullscreen({ on: false }).catch(() => {});
+}
 async function downloadFor(filePath) {
   try {
     return (await native.getDownloads()).find((d) => d.filePath === filePath) || null;
@@ -267,7 +279,7 @@ if (isNative) {
     if (window.__sbLocalPlayerClose?.()) return;
     if (document.fullscreenElement) { document.exitFullscreen?.(); return; }
     if (document.documentElement.hasAttribute("data-player-fullscreen")) {
-      fire("webview-leave-fullscreen");
+      exitPlayerFullscreen();
       return;
     }
     const overlay = hasOpenOverlay();

@@ -51,6 +51,7 @@ function currentSubtitle() {
 }
 
 let last = { active: false, playing: false };
+let intercepting = false;
 let lastFrame = null;
 let pip = false;
 
@@ -63,6 +64,17 @@ async function poll() {
     } catch {}
   }
   lastFrame = state ? frame : null;
+  // in-app fullscreen only for the Movie/TV page player
+  const want = !!frame?.closest?.(".player-wrap");
+  if (want !== intercepting) {
+    intercepting = want;
+    P.setInterceptFullscreen({ on: want }).catch(() => {});
+    // left the player page while it was fullscreen → restore bars/orientation
+    if (!want && !localPlayerFrame()) {
+      document.documentElement.removeAttribute("data-player-fullscreen");
+      P.setFullscreen({ on: false }).catch(() => {});
+    }
+  }
   const active = !!state;
   const playing = active && !state.paused;
   const payload = active

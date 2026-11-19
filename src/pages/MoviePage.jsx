@@ -728,7 +728,8 @@ export default function MoviePage({
   // Videasy and HiAnime handle fullscreen internally via CSS, skip those.
   useEffect(() => {
     if (!playing) return;
-    if (!NEEDS_INTERCEPT.includes(playerSource)) return;
+    // mobile: every source uses the in-app fullscreen (keeps the app's overlays visible)
+    if (!NEEDS_INTERCEPT.includes(playerSource) && !window.electron?.isMobile) return;
     const enterH = window.electron?.onWebviewEnterFullscreen?.(() => {
       setPlayerFullscreen(true);
       document.documentElement.setAttribute("data-player-fullscreen", "1");

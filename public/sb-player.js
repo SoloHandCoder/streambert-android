@@ -29,7 +29,7 @@
     rippleL: $(".ripple-l"), rippleR: $(".ripple-r"),
     scrub: $(".scrub-hud"), scrubTime: $(".scrub-time"), scrubDelta: $(".scrub-delta"),
     level: $(".level-hud"), levelIcon: $(".level-icon"), levelFill: $(".level-fill"), levelPct: $(".level-pct"),
-    err: $(".err"), errMsg: $(".err-msg"), retry: $(".err-retry"),
+    err: $(".err"), errMsg: $(".err-msg"), retry: $(".err-retry"), fs: $(".b-fs"),
   };
 
   /* ── helpers ──────────────────────────────────────────────────────── */
@@ -227,6 +227,15 @@
     else openSubMenu();
   });
   onTap(ui.retry, retry);
+  // Fullscreen (not needed for the offline player, which is already fullscreen).
+  // Inside the app the request is turned into the app's own fullscreen mode.
+  ui.fs.hidden = CAN_CLOSE;
+  onTap(ui.fs, function () {
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else (root.requestFullscreen || root.webkitRequestFullscreen).call(root).catch(function () {});
+    } catch (e) {}
+  });
 
   function closePlayer() {
     reportPosition();
@@ -275,11 +284,22 @@
   ui.menu.addEventListener("pointerdown", function (e) { e.stopPropagation(); }, { passive: true });
 
   var SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+  // remembered between videos (same origin as the app → shared localStorage)
+  var PREF_SPEED = "streambert_playerSpeed", PREF_QUALITY = "streambert_playerQuality";
+  function prefGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+  function prefSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  var savedSpeed = Number(prefGet(PREF_SPEED)) || 1;
+  if (savedSpeed !== 1) {
+    video.playbackRate = savedSpeed;
+    video.defaultPlaybackRate = savedSpeed;
+    // some engines reset the rate when the source loads
+    video.addEventListener("loadedmetadata", function () { video.playbackRate = savedSpeed; }, { once: true });
+  }
   function openSpeedMenu() {
     openMenu("speed", "Speed", SPEEDS.map(function (s) {
       return {
         label: s === 1 ? "Normal" : s + "x", sel: Math.abs(video.playbackRate - s) < 0.01,
-        run: function () { video.playbackRate = s; },
+        run: function () { video.playbackRate = s; video.defaultPlaybackRate = s; prefSet(PREF_SPEED, s); },
       };
     }));
   }
@@ -415,8 +435,20 @@
       hls.loadSource(SRC);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, function () {
-        hls.startLevel = hls.levels.length - 1;
+        // preferred quality (height) from last time, else best
+        var prefH = prefGet(PREF_QUALITY);
+        var start = hls.levels.length - 1;
+        if (typeof prefH === "number" && prefH > 0) {
+          var bestIdx = -1, bestH = 0;
+          hls.levels.forEach(function (l, i) {
+            var h = l.height || 0;
+            if (h <= prefH && h >= bestH) { bestH = h; bestIdx = i; }
+          });
+          if (bestIdx >= 0) start = bestIdx;
+        }
+        hls.startLevel = start;
         hls.startLoad(at > 0 ? at : -1);
+        if (typeof prefH === "number" && prefH > 0) { hls.currentLevel = start; updateQualityLabel(); } // keep the chosen quality
         buildLevels();
         play();
       });
@@ -497,14 +529,14 @@
     var auto = manual === -1;
     var items = [{
       label: "Auto", sub: auto ? levelLabel(hls.currentLevel) : "", sel: auto,
-      run: function () { hls.currentLevel = -1; hls.nextLevel = -1; updateQualityLabel(); },
+      run: function () { hls.currentLevel = -1; hls.nextLevel = -1; prefSet(PREF_QUALITY, "auto"); updateQualityLabel(); },
     }];
     levelOptions.forEach(function (o) {
       var l = hls.levels[o.idx];
       items.push({
         label: o.label, sub: l.bitrate ? (l.bitrate / 1e6).toFixed(1) + " Mbps" : "",
         sel: !auto && manual === o.idx,
-        run: function () { hls.currentLevel = o.idx; updateQualityLabel(); },
+        run: function () { hls.currentLevel = o.idx; prefSet(PREF_QUALITY, l.height || 0); updateQualityLabel(); },
       });
     });
     openMenu("quality", "Quality", items);

@@ -44,7 +44,7 @@ export function parseLink(text) {
 async function openTitle(link) {
   const apiKey = await secureStorage.get("apikey");
   if (!apiKey) {
-    toast("Add your TMDB token first, then share the link again");
+    toast("Add your TMDB token in Streambert first, then try again");
     return;
   }
   let type = link.type, id = link.id;
@@ -74,6 +74,15 @@ async function handle(text) {
   if (!text) return;
   if (!(await waitForApp())) return;
   const nav = window.__sbNav;
+  const title = String(text).match(/^streambert:\/\/(?:open\/)?(movie|tv)\/(\d+)/i);
+  if (title) {
+    try {
+      await openTitle({ type: title[1].toLowerCase(), id: Number(title[2]) });
+    } catch {
+      toast("Couldn't open that title");
+    }
+    return;
+  }
   const sc = String(text).match(/^streambert:\/\/(?:open\/)?([a-z-]+)/i);
   if (sc) {
     const what = sc[1].toLowerCase();

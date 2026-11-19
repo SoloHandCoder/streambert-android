@@ -7,11 +7,13 @@ import "./styles/mobile.css";
 import { initTvNav } from "./mobile/tvNav.js";
 import { initPullToRefresh } from "./mobile/pullToRefresh.js";
 import { initIncoming } from "./mobile/incoming.js";
+import { initEpisodeWatch } from "./mobile/episodeWatch.js";
 
 initTvNav();
 if (window.electron?.isMobile) {
   initPullToRefresh();
   initIncoming();
+  initEpisodeWatch();
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(
