@@ -9,6 +9,7 @@ import { native, isNative } from "./native.js";
 import { allFrames, execInFrame } from "./MobileWebView.jsx";
 import { trackWatchSecond } from "./libraryExtras.js";
 import { traktScrobble } from "./trakt.js";
+import { reportPlayer, setPartyPlayer } from "./party.js";
 
 const P = native.plugin;
 
@@ -53,6 +54,7 @@ function currentSubtitle() {
 }
 
 let last = { active: false, playing: false };
+let curT = 0; // the player's position at the last poll
 
 // The subtitle style chosen in the built-in player also applies (best effort)
 // to other sources' players that render standard <track> subtitles.
@@ -113,6 +115,7 @@ async function poll() {
     } catch {}
   }
   lastFrame = state ? frame : null;
+  curT = state?.t || 0;
   if (state) styleEmbedded(frame);
   // in-app fullscreen only for the Movie/TV page player
   const want = !!frame?.closest?.(".player-wrap");
@@ -130,6 +133,18 @@ async function poll() {
   if (playing) {
     const info = watchInfo(frame);
     if (info) trackWatchSecond(info);
+  }
+  // watch party: what's open / playing here
+  {
+    let pm = active ? watchInfo(frame) : null;
+    if (!pm) {
+      const sel = window.__sbNav?.selected?.();
+      const pg = window.__sbNav?.page?.();
+      if (sel?.id && (pg === "movie" || pg === "tv")) pm = { id: sel.id, media_type: pg, title: sel.title || sel.name || "" };
+    }
+    const epw = window.__sbNav?.watching?.();
+    if (pm && pm.media_type === "tv") pm = { ...pm, season: epw?.season, episode: epw?.episode };
+    reportPlayer(pm ? { id: pm.id, media_type: pm.media_type, title: pm.title, season: pm.season, episode: pm.episode } : null, active ? { playing, t: state.t || 0 } : null);
   }
   if (active) {
     const info = watchInfo(frame);
@@ -159,6 +174,12 @@ async function poll() {
     try { await P.setPlaybackState(payload); } catch {}
   }
 }
+
+// watch party: follow what the others do
+setPartyPlayer(async ({ playing, t }) => {
+  if (Math.abs(curT - t) > 2) await command("seek", t);
+  await command(playing ? "play" : "pause");
+});
 
 async function command(cmd, value) {
   const frame = lastFrame || activeFrame();

@@ -86,6 +86,7 @@ import {
 import { useSourceId } from "../utils/useSourceId";
 import { setPlayerGamepadActive } from "../utils/gamepadPlayerState";
 import HiAnimeLoader from "../components/HiAnimeLoader";
+import { PartyButton } from "../mobile/PartyUI";
 import { RateButton, ListsButton } from "../mobile/LibraryUI";
 
 // ── Partial-circle progress icon (cached per pct tier) ───────────────────────
@@ -1872,6 +1873,7 @@ export default function TVPage({
                     <>
                       <ListsButton item={{ ...item, media_type: "tv" }} />
                       <RateButton item={{ ...item, media_type: "tv" }} />
+                      <PartyButton />
                     </>
                   )}
                   <button className="btn btn-ghost" onClick={onBack}>

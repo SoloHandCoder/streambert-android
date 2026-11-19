@@ -1,3 +1,4 @@
+import { PartyDock, PartyReactions } from "./mobile/PartyUI";
 import { traktMarkWatched } from "./mobile/trakt.js";
 import KidsGate from "./mobile/KidsGate";
 import { onEpisodeWatched } from "./mobile/smartDownloads.js";
@@ -1348,6 +1349,8 @@ export default function App() {
           />
         )}
         {toast && <div className="toast">{toast}</div>}
+        <PartyDock />
+        <PartyReactions />
 
         {/* ── Episode check status pill / result card ── */}
         {episodeCheckStatus && (
