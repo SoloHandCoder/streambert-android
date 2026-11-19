@@ -18,6 +18,7 @@ public class CastOptionsProvider implements OptionsProvider {
     @Override
     public CastOptions getCastOptions(Context context) {
         NotificationOptions notification = new NotificationOptions.Builder()
+                .setSmallIconDrawableResId(R.drawable.ic_stat_streambert)
                 .setActions(Arrays.asList(
                         MediaIntentReceiver.ACTION_REWIND,
                         MediaIntentReceiver.ACTION_TOGGLE_PLAYBACK,

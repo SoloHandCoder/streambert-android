@@ -54,7 +54,8 @@ public class MediaPlaybackService extends Service {
         PendingIntent pi = PendingIntent.getActivity(ctx, 1, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         boolean playing = mc.isPlaying();
         NotificationCompat.Builder b = new NotificationCompat.Builder(ctx, CHANNEL)
-                .setSmallIcon(android.R.drawable.ic_media_play)
+                .setSmallIcon(R.drawable.ic_stat_streambert)
+                .setColor(0xFFE50914)
                 .setLargeIcon(mc.art())
                 .setContentTitle(mc.title().isEmpty() ? "Streambert" : mc.title())
                 .setContentText(mc.subtitle().isEmpty() ? "Streambert" : mc.subtitle())

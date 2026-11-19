@@ -1,6 +1,6 @@
 export const StreambertLogo = ({ style }) => (
   <img
-    src="./logo.svg"
+    src="./logo-app.png"
     alt="Streambert"
     width="44"
     height="44"

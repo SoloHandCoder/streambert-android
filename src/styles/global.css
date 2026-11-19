@@ -1503,7 +1503,8 @@ body.no-anim *::after {
     width: 80px;
     height: 80px;
     margin: 0 auto 20px;
-    filter: drop-shadow(0 0 20px rgba(229, 9, 20, 0.6));
+    filter: drop-shadow(0 6px 24px rgba(229, 9, 20, 0.45));
+    border-radius: 20%;
 }
 
 .apikey-title {

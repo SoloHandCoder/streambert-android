@@ -53,7 +53,8 @@ public class DownloadService extends Service {
         Intent open = new Intent(ctx, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent pi = PendingIntent.getActivity(ctx, 0, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         return new NotificationCompat.Builder(ctx, CHANNEL)
-                .setSmallIcon(android.R.drawable.stat_sys_download)
+                .setSmallIcon(R.drawable.ic_stat_streambert)
+                    .setColor(0xFFE50914)
                 .setContentTitle("Streambert")
                 .setContentText(n == 1 ? "Downloading 1 item…" : "Downloading " + n + " items…")
                 .setOngoing(true)

@@ -392,7 +392,8 @@ public class StreambertPlugin extends Plugin {
             NotificationManager nm = (NotificationManager) getContext().getSystemService(android.content.Context.NOTIFICATION_SERVICE);
             DownloadService.ensureChannels(getContext());
             nm.notify((int) (System.currentTimeMillis() % 100000) + 10, new NotificationCompat.Builder(getContext(), "events")
-                    .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                    .setSmallIcon(R.drawable.ic_stat_streambert)
+                    .setColor(0xFFE50914)
                     .setContentTitle(call.getString("title", "Streambert"))
                     .setContentText(call.getString("body", ""))
                     .setAutoCancel(true)
