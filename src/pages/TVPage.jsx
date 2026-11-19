@@ -1,4 +1,5 @@
 import MobileWebView from "../mobile/MobileWebView";
+import { downloadSeason } from "../mobile/seasonDownload";
 import {
   useState,
   useEffect,
@@ -1100,7 +1101,8 @@ export default function TVPage({
         (dl.tmdbId === item.id || dl.mediaId === item.id) &&
         (dl.status === "completed" ||
           dl.status === "local" ||
-          dl.status === "downloading")
+          dl.status === "downloading" ||
+          dl.status === "paused")
       ) {
         map.set(`s${dl.season}e${dl.episode}`, dl);
       }
@@ -2640,6 +2642,49 @@ export default function TVPage({
                 <div className="spinner" />
               </div>
             )}
+            {window.electron?.isMobile &&
+              !loadingSeason &&
+              !restricted &&
+              currentSeasonEpisodes?.length > 0 && (
+                <button
+                  className="btn btn-secondary sb-season-dl-btn"
+                  onClick={() =>
+                    downloadSeason({
+                      baseName: `${title}${effectiveYear ? ` (${effectiveYear})` : ""}`,
+                      tmdbId: item.id,
+                      season: selectedSeason,
+                      posterPath: d.poster_path,
+                      episodes: currentSeasonEpisodes.filter(
+                        (ep) => !ep.air_date || new Date(ep.air_date) <= new Date(),
+                      ),
+                      skip: new Set(
+                        currentSeasonEpisodes
+                          .filter((ep) =>
+                            downloadsByEpisodeKey.has(`s${selectedSeason}e${ep.episode_number}`),
+                          )
+                          .map((ep) => ep.episode_number),
+                      ),
+                      async: isAsync,
+                      animeTitle: title,
+                      dubMode,
+                      embedUrl: (ep) =>
+                        getSourceUrl(
+                          playerSource,
+                          "tv",
+                          srcId.id,
+                          ep._tmdbSeason ?? selectedSeason,
+                          ep._tmdbAbsolute ?? ep.episode_number,
+                          {},
+                          playerAccentColor,
+                          playerSubLang,
+                        ),
+                    })
+                  }
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6, verticalAlign: "-3px" }}><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14" /></svg>
+                  Download season {selectedSeason}
+                </button>
+              )}
             {!loadingSeason &&
               (seasonData?.episodes || episodeGroupCurrentEpisodes?.length) && (
                 <div className="episodes-grid">

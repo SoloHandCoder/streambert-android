@@ -1636,3 +1636,71 @@ html:not([data-mobile]) .sb-ptr {
         transform: rotate(360deg);
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Season download
+   ═══════════════════════════════════════════════════════════════════════════ */
+.sb-season-dl-btn {
+    margin: 0 0 14px;
+    min-height: 42px;
+}
+#sb-season-dl {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(env(safe-area-inset-bottom) + 84px);
+    z-index: 5500;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px 12px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px 12px;
+    align-items: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+    transform: translateY(140%);
+    opacity: 0;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+    pointer-events: none;
+}
+#sb-season-dl.sb-sdl--on {
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+}
+.sb-sdl__text {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.4;
+}
+.sb-sdl__bar {
+    grid-column: 1 / -1;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--surface3);
+    overflow: hidden;
+}
+.sb-sdl__fill {
+    height: 100%;
+    width: 0;
+    background: var(--red);
+    transition: width 0.3s ease;
+}
+.sb-sdl__x {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font: 500 12px var(--font-body);
+}
+html[data-mobile] .sidebar ~ * #sb-season-dl {
+    bottom: calc(env(safe-area-inset-bottom) + 84px);
+}
+@media (orientation: landscape) {
+    #sb-season-dl {
+        bottom: calc(env(safe-area-inset-bottom) + 12px);
+        left: 84px;
+    }
+}

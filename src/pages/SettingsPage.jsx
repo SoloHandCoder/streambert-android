@@ -1,3 +1,4 @@
+import AndroidDownloadSettings from "../mobile/DownloadSettings";
 import { useState, useEffect, useRef } from "react";
 import UpdateModal from "../components/UpdateModal";
 import {
@@ -4229,6 +4230,9 @@ export default function SettingsPage({
             subtitle="Where downloaded video files are saved on disk"
           />
 
+          {window.electron?.isMobile ? (
+            <AndroidDownloadSettings />
+          ) : (
           <div style={{ marginBottom: 40 }}>
             <div className="settings-section-title">Download Folder</div>
             <div
@@ -4278,6 +4282,7 @@ export default function SettingsPage({
               </div>
             )}
           </div>
+          )}
         </div>
 
         {/* ══════════════════════════════════════════════════════════════════ */}

@@ -57,30 +57,114 @@ public final class Downloads {
 
     private static final class Job {
         final AtomicBoolean cancelled = new AtomicBoolean(false);
+        final AtomicBoolean pausing = new AtomicBoolean(false);
         Future<?> future;
         ExecutorService pool;
     }
 
+    private final android.content.SharedPreferences prefs;
+
     private Downloads(Context ctx) {
         this.ctx = ctx;
         this.store = new File(ctx.getFilesDir(), "downloads.json");
+        this.prefs = ctx.getSharedPreferences("sb_downloads", Context.MODE_PRIVATE);
         try {
             if (store.exists()) {
                 JSONArray a = new JSONArray(new String(Files.readAllBytes(store.toPath()), StandardCharsets.UTF_8));
                 for (int i = 0; i < a.length(); i++) {
                     JSONObject o = a.getJSONObject(i);
-                    // downloads interrupted by app kill
+                    // downloads interrupted by app kill -> continue automatically
                     if ("downloading".equals(o.optString("status"))) {
-                        o.put("status", "error");
-                        o.put("lastMessage", "Interrupted (app was closed)");
+                        o.put("status", "paused");
+                        o.put("_autoResume", true);
+                        o.put("speed", "");
+                        o.put("lastMessage", "Interrupted, resuming…");
                     }
                     list.add(o);
                 }
             }
         } catch (Exception ignored) {}
+        registerNetworkMonitor();
     }
 
     public void setListener(Listener l) { listener = l; }
+
+    // ───────────────────────── settings ─────────────────────────
+
+    public boolean wifiOnly() { return prefs.getBoolean("wifiOnly", false); }
+    public boolean convertMp4() { return prefs.getBoolean("convertMp4", true); }
+    /** "app" (private app storage), "movies" (public Movies/Streambert) or "custom" (picked folder). */
+    public String location() { return prefs.getString("location", "app"); }
+    public String treeUri() { return prefs.getString("treeUri", null); }
+    public String treeName() { return prefs.getString("treeName", null); }
+
+    public void setWifiOnly(boolean v) {
+        prefs.edit().putBoolean("wifiOnly", v).apply();
+        onNetworkChanged();
+    }
+    public void setConvertMp4(boolean v) { prefs.edit().putBoolean("convertMp4", v).apply(); }
+    public void setLocation(String loc, String tree, String name) {
+        android.content.SharedPreferences.Editor ed = prefs.edit().putString("location", loc);
+        if (tree != null) ed.putString("treeUri", tree).putString("treeName", name);
+        ed.apply();
+    }
+
+    // ───────────────────────── network (Wi-Fi only) ─────────────────────────
+
+    private boolean computeNetworkAllowed() {
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager) ctx.getSystemService(Context.CONNECTIVITY_SERVICE);
+            android.net.Network n = cm.getActiveNetwork();
+            android.net.NetworkCapabilities c = n != null ? cm.getNetworkCapabilities(n) : null;
+            if (c == null || !c.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)) return false;
+            if (!wifiOnly()) return true;
+            return c.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+                    || c.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI)
+                    || c.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET);
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    public boolean networkAllowed() { return computeNetworkAllowed(); }
+
+    public String waitReason() {
+        return wifiOnly() ? "Waiting for Wi-Fi…" : "Waiting for network…";
+    }
+
+    private final android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable netCheck = this::onNetworkChanged;
+
+    private void registerNetworkMonitor() {
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager) ctx.getSystemService(Context.CONNECTIVITY_SERVICE);
+            android.net.ConnectivityManager.NetworkCallback cb = new android.net.ConnectivityManager.NetworkCallback() {
+                @Override public void onAvailable(android.net.Network network) { schedule(); }
+                @Override public void onLost(android.net.Network network) { schedule(); }
+                @Override public void onCapabilitiesChanged(android.net.Network network, android.net.NetworkCapabilities nc) { schedule(); }
+                private void schedule() { main.removeCallbacks(netCheck); main.postDelayed(netCheck, 1500); }
+            };
+            cm.registerNetworkCallback(new android.net.NetworkRequest.Builder()
+                    .addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET).build(), cb);
+        } catch (Exception ignored) {}
+    }
+
+    /** Pauses running downloads when the network isn't allowed, resumes waiting ones when it is. */
+    public synchronized void onNetworkChanged() {
+        if (!computeNetworkAllowed()) {
+            for (String id : new ArrayList<>(active.keySet())) pause(id, waitReason(), true);
+        } else {
+            resumeAuto();
+        }
+    }
+
+    /** Resumes downloads that were paused automatically (app killed / waiting for network). */
+    public synchronized void resumeAuto() {
+        if (!computeNetworkAllowed()) return;
+        for (JSONObject o : new ArrayList<>(list)) {
+            if ("paused".equals(o.optString("status")) && o.optBoolean("_autoResume", false)) resume(o.optString("id"));
+        }
+    }
 
     public File baseDir() {
         File d = ctx.getExternalFilesDir(Environment.DIRECTORY_MOVIES);
@@ -158,7 +242,12 @@ public final class Downloads {
             e.put("size", "");
             e.put("totalFragments", 0);
             e.put("completedFragments", 0);
-            e.put("lastMessage", "Starting…");
+            e.put("lastMessage", "Queued");
+            JSONObject hj = new JSONObject();
+            if (headers != null) for (Map.Entry<String, String> h : headers.entrySet()) hj.put(h.getKey(), h.getValue());
+            e.put("_headers", hj);
+            String fbu = args.optString("fallbackUrl", "");
+            if (!fbu.isEmpty() && !"null".equals(fbu)) e.put("_fallback", fbu);
             e.put("startedAt", System.currentTimeMillis());
             e.put("completedAt", JSONObject.NULL);
             for (String k : new String[]{"mediaId", "mediaType", "season", "episode", "posterPath", "tmdbId"}) {
@@ -180,13 +269,64 @@ public final class Downloads {
             list.add(0, e);
             save();
         }
-        String fb = args.optString("fallbackUrl", "");
-        if (!fb.isEmpty() && !"null".equals(fb)) currentFallback.put(id, fb);
+        if (!computeNetworkAllowed()) {
+            emit(id, "status", "paused", "_autoResume", true, "lastMessage", waitReason());
+            return id;
+        }
+        submit(id, e);
+        return id;
+    }
+
+    private Map<String, String> headersOf(JSONObject e) {
+        Map<String, String> h = new HashMap<>();
+        JSONObject hj = e.optJSONObject("_headers");
+        if (hj != null) for (java.util.Iterator<String> it = hj.keys(); it.hasNext(); ) {
+            String k = it.next();
+            h.put(k, hj.optString(k));
+        }
+        return h;
+    }
+
+    private synchronized void submit(String id, JSONObject e) {
+        if (active.containsKey(id)) return;
+        String fb = e.optString("_fallback", "");
+        if (!fb.isEmpty()) currentFallback.put(id, fb);
         Job job = new Job();
         active.put(id, job);
         DownloadService.refresh(ctx);
+        Map<String, String> headers = headersOf(e);
         job.future = jobs.submit(() -> run(id, e, headers, job));
-        return id;
+    }
+
+    /** Stops a running download but keeps everything downloaded so far. */
+    public synchronized void pause(String id, String reason, boolean autoResume) {
+        Job j = active.remove(id);
+        if (j != null) {
+            j.pausing.set(true);
+            j.cancelled.set(true);
+            if (j.pool != null) j.pool.shutdownNow();
+            if (j.future != null) j.future.cancel(true);
+        }
+        JSONObject o = find(id);
+        if (o != null && !"completed".equals(o.optString("status"))) {
+            emit(id, "status", "paused", "speed", "", "_autoResume", autoResume,
+                    "lastMessage", reason != null ? reason : "Paused");
+        }
+        DownloadService.refresh(ctx);
+    }
+
+    /** Continues a paused (or failed) download from where it stopped. */
+    public synchronized void resume(String id) {
+        JSONObject o = find(id);
+        if (o == null || active.containsKey(id)) return;
+        String st = o.optString("status");
+        if (!"paused".equals(st) && !"error".equals(st)) return;
+        if (!computeNetworkAllowed()) {
+            emit(id, "status", "paused", "_autoResume", true, "lastMessage", waitReason());
+            return;
+        }
+        emit(id, "status", "downloading", "_autoResume", false, "lastMessage", "Resuming…", "speed", "");
+        submit(id, o);
     }
 
     public void cancel(String id) {
@@ -233,12 +373,11 @@ public final class Downloads {
         String fp = o.optString("filePath", "");
         String dir = o.optString("_dir", "");
         if (!dir.isEmpty()) ok = deleteRecursive(new File(dir));
-        else if (!fp.isEmpty() && !"null".equals(fp)) ok = new File(fp).delete();
+        else if (!fp.isEmpty() && !"null".equals(fp)) ok = StorageMover.deletePath(ctx, fp);
         JSONArray subs = o.optJSONArray("subtitlePaths");
         if (subs != null) for (int i = 0; i < subs.length(); i++) {
             JSONObject sp = subs.optJSONObject(i);
-            if (sp != null) //noinspection ResultOfMethodCallIgnored
-                new File(sp.optString("path", "/nonexistent")).delete();
+            if (sp != null) StorageMover.deletePath(ctx, sp.optString("path", ""));
         }
         return ok;
     }
@@ -266,7 +405,7 @@ public final class Downloads {
             if (!dir.isEmpty()) s += sizeOf(new File(dir));
             else {
                 String fp = o.optString("filePath", "");
-                if (!fp.isEmpty()) s += sizeOf(new File(fp));
+                if (!fp.isEmpty()) s += StorageMover.sizeOfPath(ctx, fp);
             }
         }
         return s;
@@ -291,11 +430,21 @@ public final class Downloads {
     private void run(String id, JSONObject e, Map<String, String> headers, Job job) {
         String url = e.optString("m3u8Url");
         String name = safeName(e.optString("name"));
-        File dir = new File(baseDir(), name + "_" + id.substring(0, 6));
+        String prevDir = e.optString("_dir", "");
+        File dir = !prevDir.isEmpty() ? new File(prevDir) : new File(baseDir(), name + "_" + id.substring(0, 6));
+        File partial = new File(dir, name + ".mp4.part");
         try {
             //noinspection ResultOfMethodCallIgnored
             dir.mkdirs();
             update(id, new JSONObject().put("_dir", dir.getAbsolutePath()));
+            emit(id, "lastMessage", "Starting…");
+            // resume a partially downloaded direct file with a Range request
+            if ("file".equals(e.optString("_kind")) && partial.exists() && partial.length() > 0) {
+                String done = downloadFileResume(id, url, headers, partial, new File(dir, name + ".mp4"), job);
+                if (job.cancelled.get()) return;
+                finish(id, e, dir, name, headers, done, false, job);
+                return;
+            }
             Net.Response probe = Net.open(url, "GET", headers, null, 15000);
             String ct = probe.headers.getOrDefault("content-type", "").toLowerCase();
             // sniff the body: many hosts serve playlists from extension-less URLs
@@ -312,25 +461,87 @@ public final class Downloads {
             if (isHls) {
                 String text = probe.text();
                 if (!text.trim().startsWith("#EXTM3U")) throw new IOException("Not a valid HLS playlist (HTTP " + probe.status + ")");
+                update(id, new JSONObject().put("_kind", "hls"));
                 finalPath = downloadHls(id, probe.url, text, dir, headers, job);
+                if (job.cancelled.get()) return;
+                finish(id, e, dir, name, headers, finalPath, true, job);
             } else {
                 if (probe.status >= 400) { probe.conn.disconnect(); throw new IOException("HTTP " + probe.status); }
-                finalPath = downloadFile(id, probe, new File(dir, name + ".mp4"), job);
-                if (new File(finalPath).length() < 64 * 1024) throw new IOException("Server returned no video (file too small)");
+                update(id, new JSONObject().put("_kind", "file"));
+                finalPath = downloadFile(id, probe, partial, job);
+                if (job.cancelled.get()) return;
+                File mp4 = new File(dir, name + ".mp4");
+                if (!new File(finalPath).renameTo(mp4)) throw new IOException("rename failed");
+                if (mp4.length() < 64 * 1024) throw new IOException("Server returned no video (file too small)");
+                finish(id, e, dir, name, headers, mp4.getAbsolutePath(), false, job);
             }
-            if (job.cancelled.get()) return;
-            JSONArray subPaths = downloadSubtitles(e, dir, name, headers);
-            active.remove(id);
-            emit(id, "subtitlePaths", subPaths, "status", "completed", "progress", 100, "filePath", finalPath,
-                    "completedAt", System.currentTimeMillis(), "lastMessage", "Completed", "speed", "",
-                    "size", human(sizeOf(dir)));
         } catch (Throwable t) {
-            active.remove(id);
-            if (job.cancelled.get()) return;
+            boolean paused = job.pausing.get();
+            active.remove(id, job);
+            if (paused || job.cancelled.get()) return;
+            if (!computeNetworkAllowed()) {
+                // connection dropped / switched to mobile data -> wait and continue later
+                emit(id, "status", "paused", "_autoResume", true, "speed", "", "lastMessage", waitReason());
+                return;
+            }
             String msg = t.getMessage() != null ? t.getMessage() : t.getClass().getSimpleName();
             emit(id, "status", "error", "lastMessage", "Error: " + msg, "speed", "");
         } finally {
             DownloadService.refresh(ctx);
+        }
+    }
+
+    /** Subtitles, optional HLS -> MP4 conversion, move to the chosen save location, mark completed. */
+    private void finish(String id, JSONObject e, File dir, String name, Map<String, String> headers,
+                        String finalPath, boolean hls, Job job) throws Exception {
+        JSONArray subPaths = downloadSubtitles(e, dir, name, headers);
+        String path = finalPath;
+        if (hls && convertMp4()) {
+            File mp4 = new File(dir, name + ".mp4");
+            try {
+                emit(id, "progress", 99, "lastMessage", "Converting to MP4…", "speed", "");
+                final long[] last = {0};
+                Remuxer.hlsToMp4(new File(finalPath), mp4, (pct, msg) -> {
+                    long now = System.currentTimeMillis();
+                    if (now - last[0] > 600) {
+                        last[0] = now;
+                        emit(id, "lastMessage", "Converting to MP4… " + pct + "%");
+                    }
+                });
+                // keep only the mp4 + subtitles
+                File[] kids = dir.listFiles();
+                if (kids != null) for (File k : kids) {
+                    String n = k.getName();
+                    if (k.equals(mp4) || n.endsWith(".vtt") || n.endsWith(".srt")) continue;
+                    deleteRecursive(k);
+                }
+                path = mp4.getAbsolutePath();
+            } catch (InterruptedException ie) {
+                throw ie;
+            } catch (Throwable t) {
+                // conversion not possible (codec etc.) -> keep the HLS version, it plays in-app
+                android.util.Log.w("Streambert", "MP4 conversion failed", t);
+                //noinspection ResultOfMethodCallIgnored
+                mp4.delete();
+            }
+        }
+        if (job.cancelled.get()) return;
+        JSONObject moved = null;
+        if (path.endsWith(".mp4") && !"app".equals(location())) {
+            emit(id, "lastMessage", "Saving to " + ("custom".equals(location()) ? treeName() : "Movies") + "…");
+            moved = StorageMover.move(ctx, this, new File(path), subPaths, name);
+        }
+        active.remove(id, job);
+        if (moved != null) {
+            emit(id, "subtitlePaths", moved.optJSONArray("subtitlePaths"), "status", "completed", "progress", 100,
+                    "filePath", moved.optString("filePath"), "_dir", "", "_location", moved.optString("location"),
+                    "completedAt", System.currentTimeMillis(), "lastMessage", "Completed", "speed", "",
+                    "size", human(moved.optLong("bytes")));
+            deleteRecursive(dir);
+        } else {
+            emit(id, "subtitlePaths", subPaths, "status", "completed", "progress", 100, "filePath", path,
+                    "completedAt", System.currentTimeMillis(), "lastMessage", "Completed", "speed", "",
+                    "size", human(sizeOf(dir)));
         }
     }
 
@@ -617,7 +828,7 @@ public final class Downloads {
                 int d = done.incrementAndGet();
                 long now = System.currentTimeMillis();
                 long prev = lastEmit.get();
-                if ((now - prev > 400 || d == total) && lastEmit.compareAndSet(prev, now)) {
+                if (!job.cancelled.get() && (now - prev > 400 || d == total) && lastEmit.compareAndSet(prev, now)) {
                     long ws = windowStart.get();
                     if (now - ws > 1500) {
                         double bps = windowBytes.getAndSet(0) * 1000.0 / (now - ws);
@@ -638,6 +849,47 @@ public final class Downloads {
         pool.shutdown();
         if (job.cancelled.get()) throw new IOException("cancelled");
         if (err[0] != null) throw new IOException("Fragment failed: " + err[0].getMessage());
+    }
+
+    private String downloadFileResume(String id, String url, Map<String, String> headers, File part, File mp4, Job job) throws Exception {
+        Map<String, String> h = new HashMap<>(headers);
+        h.put("Range", "bytes=" + part.length() + "-");
+        Net.Response r = Net.open(url, "GET", h, null, 20000);
+        String done;
+        if (r.status == 206) done = appendFile(id, r, part, job);
+        else if (r.status >= 400) { r.conn.disconnect(); throw new IOException("HTTP " + r.status); }
+        else done = downloadFile(id, r, part, job); // server ignored the range -> start over
+        if (job.cancelled.get()) return done;
+        if (!new File(done).renameTo(mp4)) throw new IOException("rename failed");
+        return mp4.getAbsolutePath();
+    }
+
+    private String appendFile(String id, Net.Response r, File out, Job job) throws Exception {
+        long len = -1;
+        String cr = r.headers.getOrDefault("content-range", "");
+        int slash = cr.lastIndexOf('/');
+        if (slash > 0) try { len = Long.parseLong(cr.substring(slash + 1).trim()); } catch (Exception ignored) {}
+        long got = out.length(), lastT = 0, winB = 0, winT = System.currentTimeMillis();
+        String speed = "";
+        try (InputStream in = r.body; FileOutputStream f = new FileOutputStream(out, true)) {
+            byte[] buf = new byte[131072];
+            int c;
+            while ((c = in.read(buf)) > 0) {
+                if (job.cancelled.get()) throw new IOException("cancelled");
+                f.write(buf, 0, c);
+                got += c;
+                winB += c;
+                long now = System.currentTimeMillis();
+                if (now - winT > 1500) { speed = String.format(Locale.US, "%.2f MB/s", winB * 1000.0 / (now - winT) / 1e6); winB = 0; winT = now; }
+                if (now - lastT > 500) {
+                    lastT = now;
+                    int pct = len > 0 ? (int) Math.min(99, got * 100 / len) : 0;
+                    emit(id, "progress", pct, "speed", speed, "size", len > 0 ? human(len) : human(got),
+                            "lastMessage", pct + "% of " + (len > 0 ? human(len) : "?"));
+                }
+            }
+        } finally { r.conn.disconnect(); }
+        return out.getAbsolutePath();
     }
 
     private String downloadFile(String id, Net.Response r, File out, Job job) throws Exception {

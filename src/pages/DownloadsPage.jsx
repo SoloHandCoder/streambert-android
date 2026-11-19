@@ -158,14 +158,23 @@ export default function DownloadsPage({
 
   // ── Stable derived lists ──────────────────────────────────────
   const active = useMemo(
-    () => downloads.filter((d) => d.status === "downloading"),
+    () =>
+      downloads.filter(
+        (d) =>
+          d.status === "downloading" ||
+          (window.electron?.isMobile && (d.status === "paused" || d.status === "error")),
+      ),
     [downloads],
   );
 
   const finished = useMemo(
     () =>
       downloads
-        .filter((d) => d.status !== "downloading")
+        .filter(
+          (d) =>
+            d.status !== "downloading" &&
+            !(window.electron?.isMobile && (d.status === "paused" || d.status === "error")),
+        )
         .sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0)),
     [downloads],
   );
@@ -709,6 +718,31 @@ const ActiveCard = memo(function ActiveCard({ dl, onDelete, onSelect }) {
         </div>
         <div className="dl-card__right">
           <div className="dl-card__pct">{pct.toFixed(1)}%</div>
+          {window.electron?.pauseDownload &&
+            (dl.status === "downloading" ? (
+              <button
+                className="icon-btn"
+                onClick={() => window.electron.pauseDownload(dl.id)}
+                title="Pause"
+                aria-label="Pause download"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></svg>
+              </button>
+            ) : (
+              <button
+                className="icon-btn"
+                onClick={() => window.electron.resumeDownload(dl.id)}
+                title={dl.status === "error" ? "Retry" : "Resume"}
+                aria-label={dl.status === "error" ? "Retry download" : "Resume download"}
+                style={{ color: "var(--red)" }}
+              >
+                {dl.status === "error" ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 3v6h-6" /></svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" /></svg>
+                )}
+              </button>
+            ))}
           <button className="icon-btn" onClick={onDelete} title="Remove">
             <TrashIcon />
           </button>
@@ -716,11 +750,18 @@ const ActiveCard = memo(function ActiveCard({ dl, onDelete, onSelect }) {
       </div>
       <div className="dl-card__bar-wrap">
         <div
-          className={`dl-card__bar-fill${pct > 0 ? " dl-card__bar-fill--active" : ""}`}
+          className={`dl-card__bar-fill${pct > 0 && dl.status === "downloading" ? " dl-card__bar-fill--active" : ""}`}
           style={{ width: `${Math.min(pct, 100)}%` }}
         />
       </div>
-      {dl.lastMessage && <div className="dl-card__log">{dl.lastMessage}</div>}
+      {dl.lastMessage && (
+        <div
+          className="dl-card__log"
+          style={dl.status === "error" ? { color: "var(--red)" } : undefined}
+        >
+          {dl.status === "paused" && dl.lastMessage === "Paused" ? "⏸ Paused" : dl.lastMessage}
+        </div>
+      )}
     </div>
   );
 });

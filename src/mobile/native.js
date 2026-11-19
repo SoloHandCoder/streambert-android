@@ -22,7 +22,10 @@ export const native = {
 };
 
 /** URL the WebView can load for an absolute device file path. */
-export const fileSrc = (path) => Capacitor.convertFileSrc(path);
+export const fileSrc = (path) =>
+  String(path || "").startsWith("content://")
+    ? `/__sbcontent?u=${encodeURIComponent(path)}`
+    : Capacitor.convertFileSrc(path);
 
 /** URL of the in-app media proxy (adds the Referer the stream host wants). */
 export const proxied = (url, referer) =>

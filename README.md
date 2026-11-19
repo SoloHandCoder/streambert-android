@@ -10,7 +10,9 @@ Android port of [Streambert](https://github.com/truelockmc/streambert) (Electron
   - `SbWebViewClient` — ad/tracker blocking (desktop block list), m3u8/vtt capture, blocks embed players from hijacking the app.
   - `SbChromeClient` — popup blocking, native fullscreen with auto-landscape.
   - `StreamProxy` — in-WebView media proxy that adds the Referer (replaces the desktop's local player server for HiAnime).
-  - `Downloads` + `DownloadService` — native HLS downloader (best quality, 6 parallel connections, keys/init segments, background foreground-service). Downloads play offline in-app.
+  - `Downloads` + `DownloadService` — native HLS downloader (best quality, 6 parallel connections, keys/init segments, background foreground-service). Pause/resume, auto-resume after the app was killed, Wi-Fi-only mode. Downloads play offline in-app.
+  - `Remuxer` — converts finished HLS downloads into a single MP4 with MediaExtractor/MediaMuxer (no ffmpeg); AES-128 supported.
+  - `StorageMover` + `ContentServe` — save to app storage, public Movies/Streambert, or any folder picked with the system picker (SD cards too); picked-folder files are served to the player with range support.
 - **HiAnime** resolver and **subtitles** (SubDL / Wyzie) ported to browser JS using native HTTP (no CORS).
 - **Picture-in-picture**: leaving the app while a video plays (or the pop-out button) shrinks it into a floating window.
 - **Lock-screen & notification controls** (`MediaControl` + `MediaPlaybackService`): play/pause/±10s from the lock screen, notification and headset buttons; playback continues with the screen off.
@@ -43,7 +45,7 @@ Release signing reads `android/keystore.properties` (not committed). Without it,
 
 ## Differences from desktop
 - No pop-out (PiP) window or Discord RPC. Updates come from this repo (APK) instead of the desktop releases.
-- Downloads are saved in the app's storage (`Android/data/com.streambert.android/files/Movies/Streambert`) as HLS folders or MP4 and play in the built-in player; "folder" opens them in an external player (e.g. VLC).
+- Downloads are MP4 files saved where you choose in Settings → Downloads (app storage by default); "Download season" on a show resolves and queues every episode.
 - External player = Android "Open with" (VLC, MX Player, …).
 
 License: GPL-3.0 (same as upstream).

@@ -29,6 +29,7 @@ public class SbWebViewClient extends BridgeWebViewClient {
         String scheme = u.getScheme();
         if (isApp(u)) {
             if (StreamProxy.PATH.equals(u.getPath())) return StreamProxy.handle(request);
+            if (ContentServe.PATH.equals(u.getPath())) return ContentServe.handle(view.getContext(), request);
             return super.shouldInterceptRequest(view, request);
         }
         if ("http".equals(scheme) || "https".equals(scheme)) {

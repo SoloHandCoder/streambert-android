@@ -63,6 +63,9 @@ public class StreambertPlugin extends Plugin {
             try { notifyListeners("downloadProgress", JSObject.fromJSONObject(update)); } catch (Exception ignored) {}
         });
         DownloadService.ensureChannels(getContext());
+        // continue downloads interrupted by an app kill / waiting for network
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
+                () -> Downloads.get(getContext()).resumeAuto(), 3000);
         MediaControl.get(getContext()).setListener((cmd, value) -> {
             JSObject o = new JSObject();
             o.put("cmd", cmd);
@@ -178,9 +181,11 @@ public class StreambertPlugin extends Plugin {
 
     @PluginMethod
     public void deleteFile(PluginCall call) {
-        File f = new File(call.getString("path", "/nonexistent"));
+        String dp = call.getString("path", "/nonexistent");
+        File f = new File(dp);
         JSObject r = new JSObject();
-        r.put("ok", f.isDirectory() ? Downloads.deleteRecursive(f) : f.delete());
+        r.put("ok", StorageMover.isContent(dp) ? StorageMover.deletePath(getContext(), dp)
+                : f.isDirectory() ? Downloads.deleteRecursive(f) : f.delete());
         call.resolve(r);
     }
 
@@ -188,7 +193,7 @@ public class StreambertPlugin extends Plugin {
     public void fileExists(PluginCall call) {
         String p = call.getString("path");
         JSObject r = new JSObject();
-        r.put("exists", p != null && new File(p).exists());
+        r.put("exists", StorageMover.exists(getContext(), p));
         call.resolve(r);
     }
 
@@ -245,6 +250,80 @@ public class StreambertPlugin extends Plugin {
         JSObject r = new JSObject();
         r.put("ok", true);
         r.put("id", id);
+        call.resolve(r);
+    }
+
+    @PluginMethod
+    public void pauseDownload(PluginCall call) {
+        Downloads.get(getContext()).pause(call.getString("id", ""), "Paused", false);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void resumeDownload(PluginCall call) {
+        Downloads.get(getContext()).resume(call.getString("id", ""));
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void getDownloadSettings(PluginCall call) {
+        Downloads d = Downloads.get(getContext());
+        JSObject r = new JSObject();
+        r.put("wifiOnly", d.wifiOnly());
+        r.put("convertMp4", d.convertMp4());
+        r.put("location", d.location());
+        r.put("folderName", d.treeName());
+        r.put("moviesPath", StorageMover.moviesDir().getAbsolutePath());
+        r.put("networkAllowed", d.networkAllowed());
+        call.resolve(r);
+    }
+
+    @PluginMethod
+    public void setDownloadSettings(PluginCall call) {
+        Downloads d = Downloads.get(getContext());
+        if (call.getData().has("wifiOnly")) d.setWifiOnly(call.getBoolean("wifiOnly", false));
+        if (call.getData().has("convertMp4")) d.setConvertMp4(call.getBoolean("convertMp4", true));
+        String loc = call.getString("location");
+        if ("app".equals(loc)) d.setLocation("app", null, null);
+        if ("movies".equals(loc)) {
+            if (StorageMover.needsLegacyPermission() && getActivity() != null
+                    && ContextCompat.checkSelfPermission(getContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                getActivity().runOnUiThread(() -> ActivityCompat.requestPermissions(getActivity(),
+                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 78));
+            }
+            d.setLocation("movies", null, null);
+        }
+        if ("custom".equals(loc) && d.treeUri() != null) d.setLocation("custom", null, null);
+        getDownloadSettings(call);
+    }
+
+    /** Opens the system folder picker; the picked folder becomes the save location. */
+    @PluginMethod
+    public void pickDownloadFolder(PluginCall call) {
+        Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
+        startActivityForResult(call, i, "pickFolderResult");
+    }
+
+    @com.getcapacitor.annotation.ActivityCallback
+    private void pickFolderResult(PluginCall call, androidx.activity.result.ActivityResult result) {
+        if (call == null) return;
+        JSObject r = new JSObject();
+        Uri tree = result.getData() != null ? result.getData().getData() : null;
+        if (result.getResultCode() != android.app.Activity.RESULT_OK || tree == null) {
+            r.put("ok", false);
+            call.resolve(r);
+            return;
+        }
+        try {
+            getContext().getContentResolver().takePersistableUriPermission(tree,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        } catch (Exception ignored) {}
+        String name = StorageMover.displayName(getContext(), tree);
+        Downloads.get(getContext()).setLocation("custom", tree.toString(), name);
+        r.put("ok", true);
+        r.put("folderName", name);
         call.resolve(r);
     }
 

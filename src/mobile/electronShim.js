@@ -48,10 +48,7 @@ pathsReady.then((p) => {
 
 // ── native events → app events ───────────────────────────────────────────────
 if (isNative) {
-  native.on("m3u8Found", (d) => {
-    lastStreamUrl = d.url;
-    fire("m3u8-found", d.url);
-  });
+  native.on("m3u8Found", (d) => streamFound(d.url));
   native.on("subtitleFound", (d) => {
     fire("subtitle-found", { url: d.url, lang: subs.extractSubtitleLang(d.url) });
   });
@@ -79,6 +76,62 @@ async function downloadFor(filePath) {
   }
 }
 let lastStreamUrl = null;
+let captureSink = null; // set while a hidden player is resolving a stream (season download)
+function streamFound(url) {
+  if (captureSink) {
+    captureSink(url);
+    return;
+  }
+  lastStreamUrl = url;
+  fire("m3u8-found", url);
+}
+
+/**
+ * Loads an embed player URL in a hidden frame, starts playback and returns the
+ * HLS stream it requests ({ url } or null after the timeout). Used to download
+ * whole seasons without playing every episode by hand.
+ */
+async function captureStream(embedUrl, timeoutMs = 45000) {
+  while (captureSink) await new Promise((r) => setTimeout(r, 300));
+  const found = [];
+  let resolveFirst;
+  const first = new Promise((r) => (resolveFirst = r));
+  captureSink = (url) => {
+    found.push(url);
+    resolveFirst();
+  };
+  const f = document.createElement("iframe");
+  f.setAttribute("data-sb-capture", "1");
+  f.allow = "autoplay; fullscreen";
+  f.style.cssText =
+    "position:fixed;right:0;bottom:0;width:480px;height:270px;opacity:0.01;pointer-events:none;z-index:-1;border:0";
+  f.src = embedUrl;
+  document.body.appendChild(f);
+  const kick = setInterval(() => {
+    execInFrame(
+      f,
+      `(() => { const v = document.querySelector('video');
+         if (v) { v.muted = true; v.play().catch(() => {}); return true; }
+         const b = document.querySelector('.play-button, .vjs-big-play-button, .jw-display-icon-container, [class*="play" i] button, button[aria-label*="play" i], #play, .plyr__control--overlaid');
+         if (b) { b.click(); return true; }
+         return null; })()`,
+      { deep: true, timeout: 1500 },
+    ).catch(() => {});
+  }, 2500);
+  try {
+    const timer = new Promise((r) => setTimeout(r, timeoutMs));
+    await Promise.race([first, timer]);
+    if (found.length) await new Promise((r) => setTimeout(r, 2500)); // let the master/media playlists settle
+  } finally {
+    clearInterval(kick);
+    captureSink = null;
+    f.remove();
+  }
+  if (!found.length) return null;
+  // prefer a master playlist (reported with master flag) → the last reported master
+  const masters = found.filter((u) => frameStreamMeta.get(u)?.master);
+  return { url: (masters.length ? masters[masters.length - 1] : found[found.length - 1]) };
+}
 
 // ── Chromecast ──────────────────────────────────────────────────────────────
 function refererFor(url) {
@@ -139,9 +192,8 @@ window.addEventListener("message", (ev) => {
   } else {
     lastMasterByReferer.set(d.referer, d.url);
   }
-  frameStreamMeta.set(d.url, { referer: d.referer, origin: d.origin });
-  lastStreamUrl = d.url;
-  fire("m3u8-found", d.url);
+  frameStreamMeta.set(d.url, { referer: d.referer, origin: d.origin, master: !!d.master });
+  streamFound(d.url);
 });
 
 /** Subtitles captured/selected before a download started (desktop does this in main). */
@@ -340,6 +392,9 @@ const electron = {
     return ok();
   }),
   deleteAllDownloads: safe(() => P.deleteAllDownloads()),
+  pauseDownload: safe((id) => P.pauseDownload({ id })),
+  captureStream: (url, timeout) => captureStream(url, timeout),
+  resumeDownload: safe((id) => P.resumeDownload({ id })),
   getDownloadsSize: safe(() => P.getDownloadsSize(), { bytes: 0 }),
   showInFolder: async (path) => {
     if (path) await P.openInPlayer({ url: path, title: "" });
