@@ -7,6 +7,7 @@
 //  - handles the in-app player's brightness / volume / pip / cast requests
 import { native, isNative } from "./native.js";
 import { allFrames, execInFrame } from "./MobileWebView.jsx";
+import { trackWatchSecond } from "./libraryExtras.js";
 
 const P = native.plugin;
 
@@ -79,6 +80,25 @@ async function styleEmbedded(frame) {
     el.textContent = ${JSON.stringify(css)}; return null; })()`;
   try { await execInFrame(frame, js, { deep: true, timeout: 2500 }); } catch {}
 }
+// which title is playing (for watch statistics)
+function watchInfo(frame) {
+  if (frame?.hasAttribute("data-sb-local-player")) {
+    try { return JSON.parse(frame.getAttribute("data-sb-media") || "null"); } catch { return null; }
+  }
+  if (!frame?.closest?.(".player-wrap")) return null; // trailers etc. don't count
+  const sel = window.__sbNav?.selected?.();
+  if (!sel?.id) return null;
+  const page = window.__sbNav?.page?.();
+  const media_type = page === "tv" || page === "movie" ? page : sel.media_type;
+  if (!media_type) return null;
+  return {
+    id: sel.id,
+    media_type,
+    title: sel.title || sel.name || "",
+    poster_path: sel.poster_path || null,
+    genres: (sel.genres || []).map((g) => g?.name).filter(Boolean),
+  };
+}
 let intercepting = false;
 let lastFrame = null;
 let pip = false;
@@ -106,6 +126,10 @@ async function poll() {
   }
   const active = !!state;
   const playing = active && !state.paused;
+  if (playing) {
+    const info = watchInfo(frame);
+    if (info) trackWatchSecond(info);
+  }
   const payload = active
     ? {
         active,

@@ -55,7 +55,7 @@ export function closeLocalPlayer() {
 }
 window.__sbLocalPlayerClose = closeLocalPlayer;
 
-export function openLocalPlayer({ filePath, seconds = 0, subtitlePaths = [], title = "" }) {
+export function openLocalPlayer({ filePath, seconds = 0, subtitlePaths = [], title = "", media = null }) {
   closeLocalPlayer();
   const key = String(filePath || "");
   const start = seconds > 0 ? seconds : savedResume(key);
@@ -87,6 +87,7 @@ export function openLocalPlayer({ filePath, seconds = 0, subtitlePaths = [], tit
   frame.setAttribute("allow", "autoplay; fullscreen; picture-in-picture");
   frame.setAttribute("allowfullscreen", "");
   frame.setAttribute("data-sb-local-player", "");
+  if (media) frame.setAttribute("data-sb-media", JSON.stringify(media));
   frame.title = title || "Player";
   frame.style.cssText = "position:absolute;inset:0;width:100%;height:100%;border:0;display:block;background:#000";
   // Give the player keyboard / D-pad focus once it has loaded.

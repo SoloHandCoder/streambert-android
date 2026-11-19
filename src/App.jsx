@@ -1,3 +1,4 @@
+import { getMyRating, useLibraryExtras, K_RATINGS } from "./mobile/libraryExtras.js";
 import {
   useState,
   useEffect,
@@ -66,6 +67,7 @@ export default function App() {
   const [navStack, setNavStack] = useState([]);
   // latest callbacks/data for window.__sbNav (shortcuts, shared links, pull to refresh)
   const sbNavRef = useRef({});
+  const { version: myRatingsVersion } = useLibraryExtras([K_RATINGS]);
 
   const [saved, setSaved] = useState(() => storage.get("saved") || {});
   // Separate order array for drag-and-drop reordering
@@ -734,6 +736,7 @@ export default function App() {
         return !!h;
       },
       refreshHome: () => sbNavRef.current.refreshHome?.(),
+      selected: () => sbNavRef.current.selected,
     };
     return () => {
       delete window.__sbNav;
@@ -845,6 +848,7 @@ export default function App() {
   );
   sbNavRef.current.select = handleSelectResult;
   sbNavRef.current.history = history;
+  sbNavRef.current.selected = selected;
 
   const saveApiKey = useCallback((key) => {
     secureStorage.set("apikey", key);
@@ -1036,8 +1040,10 @@ export default function App() {
       return [...list].sort((a, b) =>
         (b.year || "").localeCompare(a.year || ""),
       );
+    if (librarySort === "myrating")
+      return [...list].sort((a, b) => getMyRating(b) - getMyRating(a));
     return list;
-  }, [saved, savedOrder, librarySort]);
+  }, [saved, savedOrder, librarySort, myRatingsVersion]);
 
   const handleReorderSaved = useCallback((newOrder) => {
     setSavedOrder(newOrder);
@@ -1195,6 +1201,7 @@ export default function App() {
                 onMarkWatched={markWatched}
                 onMarkUnwatched={markUnwatched}
                 onRemoveHistory={removeHistory}
+                apiKey={apiKey}
               />
             )}
             {page === "settings" && (

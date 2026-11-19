@@ -5,6 +5,7 @@ import { EyeIcon, WatchedIcon } from "../components/Icons";
 import { useRatings, getRatingForItem } from "../utils/useRatings";
 import { isRestricted } from "../utils/ageRating";
 import { storage, STORAGE_KEYS } from "../utils/storage";
+import { MyListsSection, StatsSection } from "../mobile/LibraryUI";
 
 export default function LibraryPage({
   history,
@@ -16,7 +17,9 @@ export default function LibraryPage({
   onMarkWatched,
   onMarkUnwatched,
   onRemoveHistory,
+  apiKey,
 }) {
+  const isMobile = !!window.electron?.isMobile;
   const allItems = useMemo(
     () => [...inProgress, ...saved],
     [inProgress, saved],
@@ -38,6 +41,7 @@ export default function LibraryPage({
     title: "A-Z",
     rating: "Top rated",
     year: "Newest first",
+    myrating: "My rating",
   };
 
   const getRating = useCallback(
@@ -125,6 +129,17 @@ export default function LibraryPage({
         </div>
       )}
 
+      {isMobile && (
+        <MyListsSection
+          onSelect={onSelect}
+          watched={watched}
+          onMarkWatched={onMarkWatched}
+          onMarkUnwatched={onMarkUnwatched}
+        />
+      )}
+
+      {isMobile && <StatsSection apiKey={apiKey} onSelect={onSelect} />}
+
       {history.length > 0 && (
         <div className="library-section">
           <div className="library-section-title">Watch History</div>
@@ -200,7 +215,7 @@ export default function LibraryPage({
         </div>
       )}
 
-      {history.length === 0 && saved.length === 0 && (
+      {!isMobile && history.length === 0 && saved.length === 0 && (
         <div className="empty-state">
           <EyeIcon />
           <h3>Nothing here yet</h3>

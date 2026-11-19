@@ -86,6 +86,7 @@ import {
 import { useSourceId } from "../utils/useSourceId";
 import { setPlayerGamepadActive } from "../utils/gamepadPlayerState";
 import HiAnimeLoader from "../components/HiAnimeLoader";
+import { RateButton, ListsButton } from "../mobile/LibraryUI";
 
 // ── Partial-circle progress icon (cached per pct tier) ───────────────────────
 // Uses a single SVG arc. Three instances (25/50/75)
@@ -1867,6 +1868,12 @@ export default function TVPage({
                     {isSaved ? <BookmarkFillIcon /> : <BookmarkIcon />}
                     {isSaved ? "Saved" : "Save"}
                   </button>
+                  {window.electron?.isMobile && (
+                    <>
+                      <ListsButton item={{ ...item, media_type: "tv" }} />
+                      <RateButton item={{ ...item, media_type: "tv" }} />
+                    </>
+                  )}
                   <button className="btn btn-ghost" onClick={onBack}>
                     <BackIcon /> Back
                   </button>

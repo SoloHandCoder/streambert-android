@@ -17,6 +17,9 @@ const PERSONAL_KEYS = [
   "searchHistory",
   "episodeReleaseCache",
   "sourceFailoverCache",
+  "myRatings",
+  "customLists",
+  "watchStats",
 ];
 const PERSONAL_PREFIXES = ["dlTime_", "dlDur_", "localPos_"];
 

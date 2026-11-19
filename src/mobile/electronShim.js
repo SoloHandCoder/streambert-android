@@ -87,6 +87,12 @@ async function downloadFor(filePath) {
     return null;
   }
 }
+// what a download is (for watch statistics)
+function mediaOf(d) {
+  const id = d?.tmdbId || d?.mediaId;
+  if (!id || !d.mediaType) return null;
+  return { id, media_type: d.mediaType, title: d.showName || d.title || d.name || "", poster_path: d.posterPath || d.poster_path || null };
+}
 let lastStreamUrl = null;
 let captureSink = null; // set while a hidden player is resolving a stream (season download)
 function streamFound(url) {
@@ -282,6 +288,7 @@ if (isNative) {
       exitPlayerFullscreen();
       return;
     }
+    if (window.__sbSheetBack?.()) return;
     const overlay = hasOpenOverlay();
     if (overlay) {
       sendEscape();
@@ -424,7 +431,7 @@ const electron = {
     if (!filePath) return;
     if (/\.(log|txt)$/i.test(filePath)) return;
     const d = await downloadFor(filePath);
-    openLocalPlayer({ filePath, seconds: 0, subtitlePaths: d?.subtitlePaths || [], title: d?.name || "" });
+    openLocalPlayer({ filePath, seconds: 0, subtitlePaths: d?.subtitlePaths || [], title: d?.name || "", media: mediaOf(d) });
   },
   openPathAtTime: async (filePath, seconds, subtitlePaths) => {
     const d = await downloadFor(filePath);
@@ -433,6 +440,7 @@ const electron = {
       seconds,
       subtitlePaths: subtitlePaths?.length ? subtitlePaths : d?.subtitlePaths || [],
       title: d?.name || "",
+      media: mediaOf(d),
     });
   },
   getInstallPath: async () => (await pathsReady).files,

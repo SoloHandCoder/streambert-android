@@ -1720,6 +1720,7 @@ function LibraryPrivacySection() {
     { value: "title", label: "Title A-Z" },
     { value: "rating", label: "Top rated" },
     { value: "year", label: "Newest first" },
+    ...(window.electron?.isMobile ? [{ value: "myrating", label: "My rating" }] : []),
   ];
 
   return (

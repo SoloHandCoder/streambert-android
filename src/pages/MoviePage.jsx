@@ -76,6 +76,7 @@ import {
 import { useSourceId } from "../utils/useSourceId";
 import { setPlayerGamepadActive } from "../utils/gamepadPlayerState";
 import HiAnimeLoader from "../components/HiAnimeLoader";
+import { RateButton, ListsButton } from "../mobile/LibraryUI";
 
 export default function MoviePage({
   item,
@@ -940,6 +941,12 @@ export default function MoviePage({
                 {isSaved ? <BookmarkFillIcon /> : <BookmarkIcon />}
                 {isSaved ? "Saved" : "Save"}
               </button>
+              {window.electron?.isMobile && (
+                <>
+                  <ListsButton item={{ ...item, media_type: "movie" }} />
+                  <RateButton item={{ ...item, media_type: "movie" }} />
+                </>
+              )}
               {!isUnreleased &&
                 (isWatched ? (
                   <button
