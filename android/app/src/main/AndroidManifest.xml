@@ -30,6 +30,41 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
 
+            <!-- app shortcuts + streambert:// links -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="streambert" />
+            </intent-filter>
+
+            <!-- "Share" a TMDB / IMDb link (or any text) to Streambert -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+
+            <!-- "Open with Streambert" for TMDB / IMDb title links -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="www.themoviedb.org" />
+                <data android:host="themoviedb.org" />
+                <data android:host="www.imdb.com" />
+                <data android:host="m.imdb.com" />
+                <data android:host="imdb.com" />
+                <data android:pathPrefix="/movie" />
+                <data android:pathPrefix="/tv" />
+                <data android:pathPrefix="/title" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+
         </activity>
 
         <service

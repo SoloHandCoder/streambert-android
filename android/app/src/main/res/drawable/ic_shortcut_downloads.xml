@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- App shortcut icon: white glyph on Streambert red -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="#E50914" />
+        </shape>
+    </item>
+    <item android:drawable="@drawable/ic_shortcut_downloads_glyph" />
+</layer-list>

@@ -17,7 +17,7 @@ import {
   ACCENT_PRESETS,
 } from "./utils/appearance";
 import { collectBackupData } from "./utils/backup";
-import { tmdbFetch, setApiErrorHandlers, imgUrl } from "./utils/api";
+import { tmdbFetch, setApiErrorHandlers, imgUrl, clearTmdbCache } from "./utils/api";
 import { clearAppCaches } from "./utils/storage";
 import {
   readDiscordRpcSettings,
@@ -64,6 +64,8 @@ export default function App() {
 
   // Navigation history stack for Ctrl+Z back navigation
   const [navStack, setNavStack] = useState([]);
+  // latest callbacks/data for window.__sbNav (shortcuts, shared links, pull to refresh)
+  const sbNavRef = useRef({});
 
   const [saved, setSaved] = useState(() => storage.get("saved") || {});
   // Separate order array for drag-and-drop reordering
@@ -551,6 +553,17 @@ export default function App() {
     fetchTrending();
   }, [offline, fetchTrending]);
 
+  // Pull-to-refresh (mobile): drop caches and reload every Home row
+  const [homeKey, setHomeKey] = useState(0);
+  const refreshHome = useCallback(() => {
+    if (offline) return;
+    clearTmdbCache();
+    storage.remove("trendingCache");
+    fetchTrending();
+    setHomeKey((k) => k + 1);
+  }, [offline, fetchTrending]);
+  sbNavRef.current.refreshHome = refreshHome;
+
   // ── Sync librarySort when changed from Settings ───────────────────────────
   useEffect(() => {
     const handler = (e) => setLibrarySort(e.detail);
@@ -676,6 +689,7 @@ export default function App() {
 
   // Android back button (handled in src/mobile/electronShim.js)
   const navStackLenRef = useRef(0);
+
   useEffect(() => {
     navStackLenRef.current = navStack.length;
   }, [navStack]);
@@ -694,6 +708,19 @@ export default function App() {
         return false;
       },
       page: () => pageRef.current,
+      go: (pg) => {
+        setShowSearch(false);
+        setSelected(null);
+        setPage(pg);
+      },
+      openSearch: () => setShowSearch(true),
+      open: (item) => sbNavRef.current.select?.(item),
+      continueWatching: () => {
+        const h = sbNavRef.current.history?.[0];
+        if (h) sbNavRef.current.select?.(h);
+        return !!h;
+      },
+      refreshHome: () => sbNavRef.current.refreshHome?.(),
     };
     return () => {
       delete window.__sbNav;
@@ -803,6 +830,8 @@ export default function App() {
     },
     [navigate],
   );
+  sbNavRef.current.select = handleSelectResult;
+  sbNavRef.current.history = history;
 
   const saveApiKey = useCallback((key) => {
     secureStorage.set("apikey", key);
@@ -1080,6 +1109,7 @@ export default function App() {
           >
             {page === "home" && (
               <HomePage
+                key={homeKey}
                 trending={trending}
                 trendingTV={trendingTV}
                 loading={loadingHome}

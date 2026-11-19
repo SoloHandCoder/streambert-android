@@ -49,6 +49,18 @@ public class SbWebViewClient extends BridgeWebViewClient {
         return super.shouldInterceptRequest(view, request);
     }
 
+    /**
+     * Capacitor's default clears every plugin listener here (bridge.reset()).
+     * The WebView sometimes reports onPageStarted only after the app's JS has
+     * already registered its listeners, which silently dropped events (PiP,
+     * shortcuts, app pause). The app is a single page that never navigates, so
+     * the reset is skipped; listeners of a reloaded page simply become no-ops.
+     */
+    @Override
+    public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+        // (no Capacitor WebViewListeners are used in this app)
+    }
+
     @Override
     public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
         Uri u = request.getUrl();

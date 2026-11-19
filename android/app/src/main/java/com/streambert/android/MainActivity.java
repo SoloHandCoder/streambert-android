@@ -63,6 +63,8 @@ public class MainActivity extends BridgeActivity {
             } catch (Exception ignored) {}
         }
 
+        handleIncoming(getIntent());
+
         // Back while a player is fullscreen → leave fullscreen first
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
@@ -84,6 +86,26 @@ public class MainActivity extends BridgeActivity {
     public void onPause() {
         super.onPause();
         CookieManager.getInstance().flush();
+    }
+
+    // ───────────── shortcuts / shared links ─────────────
+    @Override
+    protected void onNewIntent(android.content.Intent intent) {
+        super.onNewIntent(intent);
+        handleIncoming(intent);
+    }
+
+    private void handleIncoming(android.content.Intent intent) {
+        if (intent == null) return;
+        String text = null;
+        String action = intent.getAction();
+        if (android.content.Intent.ACTION_SEND.equals(action)) {
+            CharSequence t = intent.getCharSequenceExtra(android.content.Intent.EXTRA_TEXT);
+            if (t != null) text = t.toString();
+        } else if (android.content.Intent.ACTION_VIEW.equals(action) && intent.getData() != null) {
+            text = intent.getData().toString();
+        }
+        if (text != null && !text.trim().isEmpty()) StreambertPlugin.deliverIncoming(text.trim());
     }
 
     // ───────────── picture-in-picture ─────────────

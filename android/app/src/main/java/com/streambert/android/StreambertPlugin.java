@@ -557,6 +557,29 @@ public class StreambertPlugin extends Plugin {
         call.resolve(r);
     }
 
+    // ───────────── incoming shortcuts / shared links ─────────────
+    private static volatile String pendingIncoming = null;
+
+    static void deliverIncoming(String text) {
+        pendingIncoming = text;
+        StreambertPlugin p = instance;
+        if (p != null && p.hasListeners("incoming")) {
+            JSObject o = new JSObject();
+            o.put("text", text);
+            pendingIncoming = null;
+            p.notifyListeners("incoming", o);
+        }
+    }
+
+    /** Returns (and clears) a link/shortcut that arrived before the page was ready. */
+    @PluginMethod
+    public void takeIncoming(PluginCall call) {
+        JSObject r = new JSObject();
+        r.put("text", pendingIncoming);
+        pendingIncoming = null;
+        call.resolve(r);
+    }
+
     // ───────────── self update (APK from GitHub releases) ─────────────
 
     private volatile boolean updateCancelled = false;

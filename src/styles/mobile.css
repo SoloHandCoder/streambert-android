@@ -1595,3 +1595,44 @@ html[data-tv] *:focus-visible {
     outline: 3px solid var(--red);
     outline-offset: 2px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Pull to refresh (Home)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.sb-ptr {
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 8px);
+    left: 50%;
+    width: 40px;
+    height: 40px;
+    margin-top: 0;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5000;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, -56px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+    will-change: transform, opacity;
+}
+html:not([data-mobile]) .sb-ptr {
+    display: none;
+}
+.sb-ptr--ready {
+    color: #fff;
+    background: var(--red);
+    border-color: var(--red);
+}
+.sb-ptr--spin svg {
+    animation: sb-ptr-spin 0.7s linear infinite;
+}
+@keyframes sb-ptr-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

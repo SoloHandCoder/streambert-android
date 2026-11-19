@@ -4,4 +4,8 @@
     <string name="title_activity_main">Streambert</string>
     <string name="package_name">com.streambert.android</string>
     <string name="custom_url_scheme">com.streambert.android</string>
+    <string name="shortcut_continue_short">Continue</string>
+    <string name="shortcut_continue_long">Continue watching</string>
+    <string name="shortcut_search">Search</string>
+    <string name="shortcut_downloads">Downloads</string>
 </resources>
