@@ -1,3 +1,4 @@
+import { traktMarkWatched } from "./mobile/trakt.js";
 import KidsGate from "./mobile/KidsGate";
 import { onEpisodeWatched } from "./mobile/smartDownloads.js";
 import DiscoverPage from "./mobile/DiscoverPage";
@@ -742,6 +743,7 @@ export default function App() {
       refreshHome: () => sbNavRef.current.refreshHome?.(),
       selected: () => sbNavRef.current.selected,
       person: (p) => sbNavRef.current.navigate?.("person", p),
+      watching: () => sbNavRef.current.watching,
       markWatched: (key) => sbNavRef.current.markWatched?.(key),
     };
     return () => {
@@ -857,6 +859,7 @@ export default function App() {
   sbNavRef.current.select = handleSelectResult;
   sbNavRef.current.history = history;
   sbNavRef.current.selected = selected;
+  sbNavRef.current.watching = watchingEpisode;
 
   const saveApiKey = useCallback((key) => {
     secureStorage.set("apikey", key);
@@ -969,6 +972,7 @@ export default function App() {
   }, []); // no deps needed
 
   const markWatched = useCallback((key) => {
+    traktMarkWatched(key);
     if (window.electron?.isMobile) onEpisodeWatched(key);
     setWatched((prev) => {
       const next = { ...prev, [key]: true };

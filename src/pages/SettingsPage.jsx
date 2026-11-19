@@ -1,3 +1,4 @@
+import TraktSettings from "../mobile/TraktSettings";
 import { LANGUAGES, languageSetting, setLanguageSetting, systemLanguage } from "../mobile/i18n.js";
 import ReminderSettings from "../mobile/ReminderSettings";
 import AndroidDownloadSettings from "../mobile/DownloadSettings";
@@ -4328,6 +4329,7 @@ export default function SettingsPage({
             />
             <ProfilesPrivacy />
             <CloudSyncSettings />
+            <TraktSettings apiKey={apiKey} />
           </div>
         )}
 

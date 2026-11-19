@@ -420,6 +420,17 @@ const electron = {
   resumeDownload: safe((id) => P.resumeDownload({ id })),
   getDownloadsSize: safe(() => P.getDownloadsSize(), { bytes: 0 }),
   scheduleReminders: (items) => P.scheduleReminders({ items: items || [] }),
+  // Trakt requests go through the native side (no CORS); only Trakt (or a local test server)
+  traktFetch: async ({ method, url, headers, body }) => {
+    const test = localStorage.getItem("__sb_trakt_api");
+    if (!String(url).startsWith("https://api.trakt.tv/") && !(test && String(url).startsWith(test))) throw new Error("blocked");
+    const r = await native.http({ url, method: method || "GET", headers: headers || {}, body, timeout: 20000 });
+    return { status: r.status, data: r.data };
+  },
+  shareImage: async ({ dataUrl, name, text }) => {
+    const b64 = String(dataUrl).split(",")[1] || "";
+    return P.shareImage({ base64: b64, name: name || "streambert.png", text: text || "" });
+  },
   verifyUser: async (title) => !!(await P.verifyUser({ title: title || "Streambert" }))?.ok,
   networkInfo: async () => {
     try {

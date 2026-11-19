@@ -8,6 +8,7 @@
 import { native, isNative } from "./native.js";
 import { allFrames, execInFrame } from "./MobileWebView.jsx";
 import { trackWatchSecond } from "./libraryExtras.js";
+import { traktScrobble } from "./trakt.js";
 
 const P = native.plugin;
 
@@ -129,6 +130,11 @@ async function poll() {
   if (playing) {
     const info = watchInfo(frame);
     if (info) trackWatchSecond(info);
+  }
+  if (active) {
+    const info = watchInfo(frame);
+    const ep = window.__sbNav?.watching?.();
+    if (info) traktScrobble({ ...info, season: ep?.season, episode: ep?.episode }, state.d ? (state.t / state.d) * 100 : 0, playing);
   }
   const payload = active
     ? {

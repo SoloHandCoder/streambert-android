@@ -693,6 +693,33 @@ public class StreambertPlugin extends Plugin {
         call.resolve(r);
     }
 
+    /** Shares a PNG (stats card) through the Android share sheet. */
+    @PluginMethod
+    public void shareImage(PluginCall call) {
+        try {
+            byte[] png = Base64.decode(call.getString("base64", ""), Base64.DEFAULT);
+            String name = call.getString("name", "streambert.png").replaceAll("[^A-Za-z0-9._-]", "_");
+            File dir = new File(getContext().getCacheDir(), "share");
+            dir.mkdirs();
+            File f = new File(dir, name);
+            try (FileOutputStream out = new FileOutputStream(f)) { out.write(png); }
+            Uri uri = FileProvider.getUriForFile(getContext(), getContext().getPackageName() + ".fileprovider", f);
+            Intent send = new Intent(Intent.ACTION_SEND)
+                    .setType("image/png")
+                    .putExtra(Intent.EXTRA_STREAM, uri)
+                    .putExtra(Intent.EXTRA_TEXT, call.getString("text", ""))
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            Intent chooser = Intent.createChooser(send, "Share");
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            getContext().startActivity(chooser);
+            JSObject r = new JSObject();
+            r.put("ok", true);
+            call.resolve(r);
+        } catch (Exception e) {
+            call.reject(String.valueOf(e.getMessage()));
+        }
+    }
+
     /** Fingerprint / phone PIN check (kids profile: unlock with the phone's own lock). */
     @PluginMethod
     public void verifyUser(PluginCall call) {
