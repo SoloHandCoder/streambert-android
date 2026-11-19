@@ -18,6 +18,9 @@ import java.util.Collections;
 
 public class MainActivity extends BridgeActivity {
     private SbChromeClient chromeClient;
+    private AppLock appLock;
+
+    public AppLock lock() { return appLock; }
 
     public SbChromeClient chrome() { return chromeClient; }
 
@@ -64,11 +67,14 @@ public class MainActivity extends BridgeActivity {
         }
 
         handleIncoming(getIntent());
+        appLock = new AppLock(this);
+        appLock.onCreate();
 
         // Back while a player is fullscreen → leave fullscreen first
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
+                if (appLock != null && appLock.isLocked()) { moveTaskToBack(true); return; }
                 if (chromeClient.isFullscreen()) {
                     chromeClient.onHideCustomView();
                     return;
@@ -86,6 +92,24 @@ public class MainActivity extends BridgeActivity {
     public void onPause() {
         super.onPause();
         CookieManager.getInstance().flush();
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        if (appLock != null) appLock.onStart();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (appLock != null) appLock.onResume();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        if (appLock != null) appLock.onStop();
     }
 
     // ───────────── shortcuts / shared links ─────────────

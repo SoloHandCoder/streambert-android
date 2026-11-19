@@ -304,6 +304,7 @@ public class StreambertPlugin extends Plugin {
         Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
         i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                 | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
+        AppLock.suppressUntil = System.currentTimeMillis() + 5 * 60_000L;
         startActivityForResult(call, i, "pickFolderResult");
     }
 
@@ -575,6 +576,72 @@ public class StreambertPlugin extends Plugin {
         call.resolve();
     }
 
+    // ───────────── home-screen widget ─────────────
+
+    @PluginMethod
+    public void updateWidget(PluginCall call) {
+        JSArray items = call.getArray("items", new JSArray());
+        io.execute(() -> ContinueWidget.save(getContext(), items));
+        call.resolve();
+    }
+
+    /** Asks the launcher to add the widget (Android shows a confirm dialog). */
+    @PluginMethod
+    public void pinWidget(PluginCall call) {
+        JSObject r = new JSObject();
+        try {
+            android.appwidget.AppWidgetManager m = android.appwidget.AppWidgetManager.getInstance(getContext());
+            boolean ok = Build.VERSION.SDK_INT >= 26 && m.isRequestPinAppWidgetSupported()
+                    && m.requestPinAppWidget(new android.content.ComponentName(getContext(), ContinueWidget.class), null, null);
+            r.put("ok", ok);
+        } catch (Exception e) {
+            r.put("ok", false);
+        }
+        call.resolve(r);
+    }
+
+    // ───────────── app lock ─────────────
+
+    @PluginMethod
+    public void getLockSettings(PluginCall call) {
+        android.content.SharedPreferences p = getContext().getSharedPreferences(AppLock.PREFS, android.content.Context.MODE_PRIVATE);
+        int avail = AppLock.availability(getContext());
+        JSObject r = new JSObject();
+        r.put("enabled", p.getBoolean("enabled", false));
+        r.put("timeoutMs", p.getLong("timeoutMs", 60_000L));
+        r.put("available", avail == androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS);
+        r.put("reason", avail == androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED
+                ? "Set up a screen lock (PIN, pattern, password or fingerprint) on your phone first."
+                : avail == androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS ? "" : "This device can't verify your identity.");
+        call.resolve(r);
+    }
+
+    /** Changing the lock always asks for verification first. */
+    @PluginMethod
+    public void setLockSettings(PluginCall call) {
+        android.content.SharedPreferences p = getContext().getSharedPreferences(AppLock.PREFS, android.content.Context.MODE_PRIVATE);
+        Boolean enabled = call.getData().has("enabled") ? call.getBoolean("enabled") : null;
+        Long timeout = call.getData().has("timeoutMs") ? call.getLong("timeoutMs") : null;
+        Runnable apply = () -> {
+            android.content.SharedPreferences.Editor ed = p.edit();
+            if (enabled != null) ed.putBoolean("enabled", enabled);
+            if (timeout != null) ed.putLong("timeoutMs", timeout);
+            ed.apply();
+            getLockSettings(call);
+        };
+        if (enabled == null && !p.getBoolean("enabled", false)) { apply.run(); return; }
+        if (AppLock.availability(getContext()) != androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS) {
+            if (Boolean.TRUE.equals(enabled)) { call.reject("Set up a screen lock on your phone first."); return; }
+            apply.run();
+            return;
+        }
+        getActivity().runOnUiThread(() -> AppLock.authenticate((androidx.appcompat.app.AppCompatActivity) getActivity(),
+                Boolean.TRUE.equals(enabled) ? "Turn on app lock" : "Change app lock", ok -> {
+                    if (ok) apply.run();
+                    else call.reject("Not verified");
+                }));
+    }
+
     // ───────────── background new-episode check ─────────────
 
     @PluginMethod
@@ -709,6 +776,7 @@ public class StreambertPlugin extends Plugin {
             JSObject res = new JSObject();
             try {
                 if (Build.VERSION.SDK_INT >= 26 && !getContext().getPackageManager().canRequestPackageInstalls()) {
+                    AppLock.suppressUntil = System.currentTimeMillis() + 5 * 60_000L;
                     Intent i = new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                             Uri.parse("package:" + getContext().getPackageName()));
                     i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

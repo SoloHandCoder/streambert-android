@@ -8,12 +8,16 @@ import { initTvNav } from "./mobile/tvNav.js";
 import { initPullToRefresh } from "./mobile/pullToRefresh.js";
 import { initIncoming } from "./mobile/incoming.js";
 import { initEpisodeWatch } from "./mobile/episodeWatch.js";
+import { initProfiles } from "./mobile/profiles.js";
+import { initWidgetSync } from "./mobile/widgetSync.js";
 
 initTvNav();
 if (window.electron?.isMobile) {
   initPullToRefresh();
   initIncoming();
   initEpisodeWatch();
+  initProfiles();
+  initWidgetSync();
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(

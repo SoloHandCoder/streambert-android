@@ -1,4 +1,5 @@
 import AndroidDownloadSettings from "../mobile/DownloadSettings";
+import ProfilesPrivacy from "../mobile/ProfilesPrivacy";
 import { useState, useEffect, useRef } from "react";
 import UpdateModal from "../components/UpdateModal";
 import {
@@ -4284,6 +4285,16 @@ export default function SettingsPage({
           </div>
           )}
         </div>
+
+        {window.electron?.isMobile && (
+          <div style={{ scrollMarginTop: 80 }} id="sb-profiles-settings">
+            <SectionGroupHeader
+              title="Profiles & Privacy"
+              subtitle="Separate profiles for everyone, and an optional app lock"
+            />
+            <ProfilesPrivacy />
+          </div>
+        )}
 
         {/* ══════════════════════════════════════════════════════════════════ */}
         {/* GROUP: NOTIFICATIONS                                               */}

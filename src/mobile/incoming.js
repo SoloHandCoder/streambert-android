@@ -74,8 +74,23 @@ async function handle(text) {
   if (!text) return;
   if (!(await waitForApp())) return;
   const nav = window.__sbNav;
-  const title = String(text).match(/^streambert:\/\/(?:open\/)?(movie|tv)\/(\d+)/i);
+  const title = String(text).match(/^streambert:\/\/(?:open\/)?(movie|tv)\/(\d+)(?:\?(.*))?/i);
   if (title) {
+    const type = title[1].toLowerCase();
+    const id = Number(title[2]);
+    const q = new URLSearchParams(title[3] || "");
+    // widget / continue watching: reopen straight from history (works offline)
+    try {
+      const hist = JSON.parse(localStorage.getItem("streambert_history") || "[]");
+      const s = q.get("s"), e = q.get("e");
+      const hit =
+        hist.find((h) => h.id === id && h.media_type === type && (s == null || (String(h.season) === s && String(h.episode) === e))) ||
+        hist.find((h) => h.id === id && h.media_type === type);
+      if (hit) {
+        nav.open(hit);
+        return;
+      }
+    } catch {}
     try {
       await openTitle({ type: title[1].toLowerCase(), id: Number(title[2]) });
     } catch {
