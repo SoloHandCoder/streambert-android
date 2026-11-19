@@ -10,6 +10,7 @@ import { initIncoming } from "./mobile/incoming.js";
 import { initEpisodeWatch } from "./mobile/episodeWatch.js";
 import { initProfiles } from "./mobile/profiles.js";
 import { initWidgetSync } from "./mobile/widgetSync.js";
+import { initCloudSync } from "./mobile/cloudSync.js";
 
 initTvNav();
 if (window.electron?.isMobile) {
@@ -18,6 +19,7 @@ if (window.electron?.isMobile) {
   initEpisodeWatch();
   initProfiles();
   initWidgetSync();
+  initCloudSync();
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(

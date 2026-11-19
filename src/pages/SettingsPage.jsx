@@ -1,5 +1,6 @@
 import AndroidDownloadSettings from "../mobile/DownloadSettings";
 import ProfilesPrivacy from "../mobile/ProfilesPrivacy";
+import CloudSyncSettings from "../mobile/CloudSyncSettings";
 import { useState, useEffect, useRef } from "react";
 import UpdateModal from "../components/UpdateModal";
 import {
@@ -4293,6 +4294,7 @@ export default function SettingsPage({
               subtitle="Separate profiles for everyone, and an optional app lock"
             />
             <ProfilesPrivacy />
+            <CloudSyncSettings />
           </div>
         )}
 

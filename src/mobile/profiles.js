@@ -85,7 +85,12 @@ export function createProfile(name, color) {
   const m = getMeta();
   if (!localStorage.getItem(META)) setMeta(m); // persist the implicit default first
   const id = "p" + Date.now().toString(36);
-  m.list.push({ id, name: String(name || "Profile").slice(0, 24), color: color || COLORS[m.list.length % COLORS.length] });
+  m.list.push({
+    id,
+    name: String(name || "Profile").slice(0, 24),
+    color: color || COLORS[m.list.length % COLORS.length],
+    editedAt: Date.now(),
+  });
   localStorage.setItem(DATA(id), "{}");
   setMeta(m);
   return id;
@@ -97,6 +102,7 @@ export function updateProfile(id, patch) {
   if (!p) return;
   if (patch.name != null) p.name = String(patch.name).slice(0, 24) || p.name;
   if (patch.color) p.color = patch.color;
+  p.editedAt = Date.now();
   setMeta(m);
 }
 
@@ -104,9 +110,62 @@ export function deleteProfile(id) {
   const m = getMeta();
   if (id === m.current || m.list.length <= 1) return false;
   m.list = m.list.filter((p) => p.id !== id);
+  m.deleted = [...new Set([...(m.deleted || []), id])];
   localStorage.removeItem(DATA(id));
   setMeta(m);
   return true;
+}
+
+// ── data access for cloud sync ───────────────────────────────────────────────
+
+/** A profile's personal data as { key (without "streambert_"): value }. */
+export function readProfileData(id) {
+  const m = getMeta();
+  const out = {};
+  const put = (fullKey, raw) => {
+    try {
+      out[fullKey.slice(P.length)] = JSON.parse(raw);
+    } catch {}
+  };
+  if (id === m.current) {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && isPersonal(k)) put(k, localStorage.getItem(k));
+    }
+  } else {
+    try {
+      const data = JSON.parse(localStorage.getItem(DATA(id)) || "{}");
+      for (const [k, v] of Object.entries(data)) if (isPersonal(k)) put(k, v);
+    } catch {}
+  }
+  return out;
+}
+
+/** Replaces a profile's personal data. Returns true when the active profile changed. */
+export function writeProfileData(id, data) {
+  const m = getMeta();
+  const entries = Object.entries(data || {}).filter(([k]) => isPersonal(P + k));
+  if (id === m.current) {
+    clearPersonal();
+    for (const [k, v] of entries) localStorage.setItem(P + k, JSON.stringify(v));
+    return true;
+  }
+  const snap = {};
+  for (const [k, v] of entries) snap[P + k] = JSON.stringify(v);
+  localStorage.setItem(DATA(id), JSON.stringify(snap));
+  return false;
+}
+
+/** Applies a merged profile list from the cloud (keeps the active profile). */
+export function applyProfileList(profiles, deleted) {
+  const m = getMeta();
+  const keep = new Map(profiles.map((p) => [p.id, p]));
+  if (!keep.has(m.current)) keep.set(m.current, m.list.find((p) => p.id === m.current));
+  for (const p of m.list) if (!keep.has(p.id) && !(deleted || []).includes(p.id)) keep.set(p.id, p);
+  for (const id of deleted || []) if (id !== m.current) localStorage.removeItem(DATA(id));
+  m.list = [...keep.values()].filter(Boolean);
+  m.deleted = [...new Set([...(m.deleted || []), ...(deleted || [])])];
+  setMeta(m);
 }
 
 export function setAskOnStart(v) {

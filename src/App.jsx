@@ -687,6 +687,19 @@ export default function App() {
     });
   }, []);
 
+  // Cloud sync (mobile) changed this profile's data -> reload it from storage
+  useEffect(() => {
+    const reload = () => {
+      setSaved(storage.get("saved") || {});
+      setSavedOrder(storage.get("savedOrder") || null);
+      setProgress(storage.get("progress") || {});
+      setHistory(storage.get("history") || []);
+      setWatched(storage.get("watched") || {});
+    };
+    window.addEventListener("streambert:sync-applied", reload);
+    return () => window.removeEventListener("streambert:sync-applied", reload);
+  }, []);
+
   // Android back button (handled in src/mobile/electronShim.js)
   const navStackLenRef = useRef(0);
 

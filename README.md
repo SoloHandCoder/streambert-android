@@ -20,6 +20,13 @@ Android port of [Streambert](https://github.com/truelockmc/streambert) (Electron
 - **Android TV**: launcher banner, D-pad / remote navigation (reuses the desktop controller navigation).
 - **Chromecast** (`CastPlugin` + `LanServer`): casts streams and downloads to the Default Media Receiver; the phone serves/proxies the media over the local network with the right headers.
 
+## Cloud sync format
+Settings → Profiles & Privacy → Cloud sync stores data in a secret GitHub Gist named **"Streambert sync"** (token needs only the `gist` scope):
+- `streambert-sync.json`: `{ app, version, updatedAt, profiles: [{id, name, color}], deleted: [ids] }`
+- `profile-<id>.json`: `{ version, updatedAt, profile, data: { saved, savedOrder, history, progress, watched, searchHistory, episodeReleaseCache, dlTime_*, … } }`
+
+Merging is three-way (`src/mobile/syncMerge.js`): per entry for maps, per watched item for history (newest `watchedAt` wins), deletions carry over.
+
 ## Build (local, no CI)
 Requirements: Node 22+, JDK 21, Android SDK (platform 35).
 
