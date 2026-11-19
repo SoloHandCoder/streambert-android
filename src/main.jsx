@@ -13,6 +13,8 @@ import { initWidgetSync } from "./mobile/widgetSync.js";
 import { initCloudSync } from "./mobile/cloudSync.js";
 import { initI18n } from "./mobile/i18n.js";
 import { initMotion } from "./mobile/motion.js";
+import { initPeople } from "./mobile/people.js";
+import { initReminders } from "./mobile/reminders.js";
 
 initI18n();
 initMotion();
@@ -24,6 +26,9 @@ if (window.electron?.isMobile) {
   initProfiles();
   initWidgetSync();
   initCloudSync();
+  const tmdbKey = async () => localStorage.getItem("__secure_apikey") || "";
+  initPeople(tmdbKey);
+  initReminders(tmdbKey);
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(

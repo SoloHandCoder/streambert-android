@@ -12,6 +12,7 @@ export const HOME_ROWS = [
   ...(typeof window !== "undefined" && window.electron?.isMobile
     ? [{ id: "because", label: "Because you watched…" }]
     : []),
+  { id: "people", label: "New from people you follow" },
   { id: "trendingMovies", label: "Trending Movies" },
   { id: "trendingTV", label: "Trending Series" },
   { id: "topRated", label: "Top Rated" },

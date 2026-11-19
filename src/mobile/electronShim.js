@@ -419,6 +419,7 @@ const electron = {
   voiceSearch: async () => (await P.voiceSearch({ prompt: "Say a movie or show" }))?.text || "",
   resumeDownload: safe((id) => P.resumeDownload({ id })),
   getDownloadsSize: safe(() => P.getDownloadsSize(), { bytes: 0 }),
+  scheduleReminders: (items) => P.scheduleReminders({ items: items || [] }),
   networkInfo: async () => {
     try {
       return await P.networkInfo();
@@ -485,8 +486,8 @@ const electron = {
   offBlockedUpdate: (h) => off("blocked-stats-update", h),
   getBlockStats: safe(() => P.getBlockStats(), { total: 0, domains: {} }),
 
-  showNotification: async ({ title, body }) => {
-    try { await P.showNotification({ title: String(title), body: String(body) }); } catch {}
+  showNotification: async ({ title, body, url }) => {
+    try { await P.showNotification({ title: String(title), body: String(body), url: url || null }); } catch {}
   },
   quitApp: async () => { try { await P.exitApp(); } catch {} },
   playerStopped: () => {

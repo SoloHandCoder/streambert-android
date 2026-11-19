@@ -1,4 +1,5 @@
 import { LANGUAGES, languageSetting, setLanguageSetting, systemLanguage } from "../mobile/i18n.js";
+import ReminderSettings from "../mobile/ReminderSettings";
 import AndroidDownloadSettings from "../mobile/DownloadSettings";
 import ProfilesPrivacy from "../mobile/ProfilesPrivacy";
 import CloudSyncSettings from "../mobile/CloudSyncSettings";
@@ -4339,6 +4340,7 @@ export default function SettingsPage({
             subtitle="Desktop alerts for downloads and new episode releases"
           />
           <NotificationsSection />
+          <ReminderSettings />
         </div>
 
         {/* ══════════════════════════════════════════════════════════════════ */}

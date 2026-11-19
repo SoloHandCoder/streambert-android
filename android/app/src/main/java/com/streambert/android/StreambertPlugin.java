@@ -526,15 +526,38 @@ public class StreambertPlugin extends Plugin {
             requestNotificationPermission();
             NotificationManager nm = (NotificationManager) getContext().getSystemService(android.content.Context.NOTIFICATION_SERVICE);
             DownloadService.ensureChannels(getContext());
-            nm.notify((int) (System.currentTimeMillis() % 100000) + 10, new NotificationCompat.Builder(getContext(), "events")
+            int nid = (int) (System.currentTimeMillis() % 100000) + 10;
+            NotificationCompat.Builder b = new NotificationCompat.Builder(getContext(), "events")
                     .setSmallIcon(R.drawable.ic_stat_streambert)
                     .setColor(0xFFE50914)
                     .setContentTitle(call.getString("title", "Streambert"))
                     .setContentText(call.getString("body", ""))
-                    .setAutoCancel(true)
-                    .build());
+                    .setAutoCancel(true);
+            String url = call.getString("url", null);
+            if (url != null && url.startsWith("streambert://")) {
+                Intent open = new Intent(Intent.ACTION_VIEW, Uri.parse(url), getContext(), MainActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                b.setContentIntent(android.app.PendingIntent.getActivity(getContext(), nid, open,
+                        android.app.PendingIntent.FLAG_IMMUTABLE | android.app.PendingIntent.FLAG_UPDATE_CURRENT));
+            }
+            nm.notify(nid, b.build());
         } catch (Exception ignored) {}
         call.resolve();
+    }
+
+    /** Release-day reminders (ReminderWorker). Replaces everything scheduled before. */
+    @PluginMethod
+    public void scheduleReminders(PluginCall call) {
+        try {
+            JSArray items = call.getArray("items", new JSArray());
+            if (items.length() > 0) requestNotificationPermission();
+            ReminderWorker.scheduleAll(getContext(), items);
+            JSObject r = new JSObject();
+            r.put("scheduled", items.length());
+            call.resolve(r);
+        } catch (Exception e) {
+            call.reject(String.valueOf(e.getMessage()));
+        }
     }
 
     private void requestNotificationPermission() {

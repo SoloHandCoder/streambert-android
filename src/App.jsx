@@ -1,4 +1,6 @@
 import { onEpisodeWatched } from "./mobile/smartDownloads.js";
+import DiscoverPage from "./mobile/DiscoverPage";
+import PersonPage from "./mobile/PersonPage";
 import { getMyRating, useLibraryExtras, K_RATINGS } from "./mobile/libraryExtras.js";
 import {
   useState,
@@ -738,6 +740,7 @@ export default function App() {
       },
       refreshHome: () => sbNavRef.current.refreshHome?.(),
       selected: () => sbNavRef.current.selected,
+      person: (p) => sbNavRef.current.navigate?.("person", p),
       markWatched: (key) => sbNavRef.current.markWatched?.(key),
     };
     return () => {
@@ -758,6 +761,8 @@ export default function App() {
       requestIdleCallback(() => gc(), { timeout: 2000 });
     }
   }, []);
+
+  sbNavRef.current.navigate = navigate;
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
   useEffect(() => {
@@ -1194,6 +1199,27 @@ export default function App() {
                 downloads={downloads}
                 onGoToDownloads={handleGoToDownloads}
                 onEpisodeChange={setWatchingEpisode}
+              />
+            )}
+            {page === "discover" && (
+              <DiscoverPage
+                apiKey={apiKey}
+                onSelect={handleSelectResult}
+                watched={watched}
+                onMarkWatched={markWatched}
+                onMarkUnwatched={markUnwatched}
+              />
+            )}
+            {page === "person" && selected && (
+              <PersonPage
+                key={selected.id}
+                person={selected}
+                apiKey={apiKey}
+                onSelect={handleSelectResult}
+                onBack={navigateBack}
+                watched={watched}
+                onMarkWatched={markWatched}
+                onMarkUnwatched={markUnwatched}
               />
             )}
             {page === "history" && (
