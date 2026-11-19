@@ -223,8 +223,7 @@
   onTap(ui.speed, function () { openSpeedMenu(); });
   onTap(ui.quality, function () { openQualityMenu(); });
   onTap(ui.cc, function () {
-    if (subTracks.length === 1) setSub(activeSub === 0 ? -1 : 0);
-    else openSubMenu();
+    openSubMenu();
   });
   onTap(ui.retry, retry);
   // Fullscreen (not needed for the offline player, which is already fullscreen).
@@ -260,7 +259,11 @@
       b.innerHTML = CHK + "<span></span>" + (it.sub ? '<span class="sub"></span>' : "");
       b.children[1].textContent = it.label;
       if (it.sub) b.children[2].textContent = it.sub;
-      b.addEventListener("click", function (e) { e.stopPropagation(); it.run(); closeMenu(); showUI(); });
+      b.addEventListener("click", function (e) {
+        e.stopPropagation();
+        if (it.run() === "keep" && it.reopen) { menuOpen = false; it.reopen(); return; }
+        closeMenu(); showUI();
+      });
       b.addEventListener("pointerdown", function (e) { e.stopPropagation(); }, { passive: true });
       ui.menuList.appendChild(b);
       if (it.sel) selEl = b;
@@ -343,6 +346,7 @@
     subTracks.push(entry);
     var attach = function (finalUrl) {
       el.src = finalUrl;
+      el.addEventListener("load", function () { onTrackLoaded(entry); });
       video.appendChild(el);
       el.track.mode = "disabled";
       if (subTracks.indexOf(entry) === 0 && activeSub === -1 && !subTouched) setSub(0);
@@ -372,7 +376,113 @@
     }
     updateCC();
   }
-  function setSub(i) { subTouched = true; activeSub = i; applySubModes(); }
+  function setSub(i) { subTouched = true; activeSub = i; applySubModes(); applyCueLayout(); }
+
+  /* ── subtitle style (remembered) & timing (remembered per video) ─────── */
+  var STYLE_KEY = "streambert_subtitleStyle";
+  var SIZES = [["s", "Small", 0.85], ["m", "Medium", 1.05], ["l", "Large", 1.35], ["xl", "Extra large", 1.7]];
+  var COLORS = [["#ffffff", "White"], ["#ffe14d", "Yellow"], ["#7ee3ff", "Cyan"], ["#9dff8a", "Green"]];
+  var BGS = [["dark", "Dark box"], ["solid", "Black box"], ["none", "No box (outline)"]];
+  var POSITIONS = [["bottom", "Bottom"], ["higher", "Higher"], ["top", "Top"]];
+  function subStyle() {
+    var d = { size: "m", color: "#ffffff", bg: "dark", position: "bottom" };
+    try { var v = JSON.parse(localStorage.getItem(STYLE_KEY)); if (v) for (var k in d) if (v[k]) d[k] = v[k]; } catch (e) {}
+    return d;
+  }
+  function saveSubStyle(st) { try { localStorage.setItem(STYLE_KEY, JSON.stringify(st)); } catch (e) {} applySubStyle(); }
+  var cueStyleEl = document.createElement("style");
+  document.head.appendChild(cueStyleEl);
+  function applySubStyle() {
+    var st = subStyle();
+    var size = (SIZES.filter(function (x) { return x[0] === st.size; })[0] || SIZES[1])[2];
+    var bg = st.bg === "none" ? "transparent" : st.bg === "solid" ? "rgba(0,0,0,0.92)" : "rgba(0,0,0,0.62)";
+    var shadow = st.bg === "none"
+      ? "0 0 3px #000, 0 0 3px #000, 1px 1px 2px #000, -1px -1px 2px #000"
+      : "0 1px 2px rgba(0,0,0,0.8)";
+    cueStyleEl.textContent = "video::cue{font-size:" + size + "em;color:" + st.color + ";background:" + bg + ";text-shadow:" + shadow + "}";
+    applyCueLayout();
+  }
+  function cuesOf(entry) { return entry && entry.el.track && entry.el.track.cues ? entry.el.track.cues : null; }
+  function applyCueLayout() {
+    var pos = subStyle().position;
+    subTracks.forEach(function (entry) {
+      var cues = cuesOf(entry);
+      if (!cues) return;
+      for (var i = 0; i < cues.length; i++) {
+        var c = cues[i];
+        c.snapToLines = true;
+        c.line = pos === "top" ? 1 : pos === "higher" ? -4 : "auto";
+      }
+    });
+  }
+  // timing offset: shifts every cue of every track
+  var OFFSET_KEY = "streambert_subOffset_" + (q.get("key") || SRC || "").slice(0, 200);
+  var subOffset = 0;
+  try { subOffset = Number(JSON.parse(localStorage.getItem(OFFSET_KEY))) || 0; } catch (e) {}
+  function shiftEntry(entry, delta) {
+    var cues = cuesOf(entry);
+    if (!cues || !delta) return;
+    for (var i = 0; i < cues.length; i++) {
+      cues[i].startTime = Math.max(0, cues[i].startTime + delta);
+      cues[i].endTime = Math.max(0, cues[i].endTime + delta);
+    }
+  }
+  function setOffset(v) {
+    v = Math.round(v * 10) / 10;
+    var delta = v - subOffset;
+    subOffset = v;
+    subTracks.forEach(function (e) { if (e.shifted) shiftEntry(e, delta); });
+    try { localStorage.setItem(OFFSET_KEY, JSON.stringify(v)); } catch (e) {}
+    toast("Subtitle delay " + (v > 0 ? "+" : "") + v.toFixed(1) + " s");
+  }
+  function onTrackLoaded(entry) {
+    if (!entry.shifted) { entry.shifted = true; shiftEntry(entry, subOffset); }
+    applyCueLayout();
+  }
+  function toast(t) {
+    var el = document.querySelector(".sb-toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.className = "sb-toast";
+      el.style.cssText = "position:absolute;left:50%;top:18%;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#fff;" +
+        "padding:8px 14px;border-radius:18px;font:600 14px var(--font-body);pointer-events:none;z-index:40;transition:opacity .2s";
+      root.appendChild(el);
+    }
+    el.textContent = t;
+    el.style.opacity = "1";
+    clearTimeout(el._t);
+    el._t = setTimeout(function () { el.style.opacity = "0"; }, 1400);
+  }
+  function label(list, v) { return (list.filter(function (x) { return x[0] === v; })[0] || list[0])[1]; }
+  function cycle(list, v) { var i = list.map(function (x) { return x[0]; }).indexOf(v); return list[(i + 1) % list.length][0]; }
+  function openStyleMenu() {
+    var st = subStyle();
+    var keep = function (fn) { return function () { fn(); return "keep"; }; };
+    var items = [
+      { label: "Size: " + label(SIZES, st.size), run: keep(function () { st.size = cycle(SIZES, st.size); saveSubStyle(st); }) },
+      { label: "Color: " + label(COLORS, st.color), run: keep(function () { st.color = cycle(COLORS, st.color); saveSubStyle(st); }) },
+      { label: "Background: " + label(BGS, st.bg), run: keep(function () { st.bg = cycle(BGS, st.bg); saveSubStyle(st); }) },
+      { label: "Position: " + label(POSITIONS, st.position), run: keep(function () { st.position = cycle(POSITIONS, st.position); saveSubStyle(st); }) },
+      { label: "Reset style", run: keep(function () { saveSubStyle({ size: "m", color: "#ffffff", bg: "dark", position: "bottom" }); }) },
+    ];
+    items.forEach(function (it) { it.reopen = openStyleMenu; });
+    openMenu("substyle", "Subtitle style", items, true);
+  }
+  function openTimingMenu() {
+    var keep = function (fn) { return function () { fn(); return "keep"; }; };
+    var items = [
+      { label: "Show earlier  (−0.5 s)", run: keep(function () { setOffset(subOffset - 0.5); }) },
+      { label: "Show later  (+0.5 s)", run: keep(function () { setOffset(subOffset + 0.5); }) },
+      { label: "Fine: −0.1 s", run: keep(function () { setOffset(subOffset - 0.1); }) },
+      { label: "Fine: +0.1 s", run: keep(function () { setOffset(subOffset + 0.1); }) },
+      { label: "Reset delay", sub: "now " + (subOffset > 0 ? "+" : "") + subOffset.toFixed(1) + " s", run: keep(function () { setOffset(0); }) },
+    ];
+    items.forEach(function (it) { it.reopen = openTimingMenu; });
+    openMenu("subtiming", "Subtitle timing", items, true);
+  }
+  applySubStyle();
+  // the app's settings page can change the style while a player is open
+  window.addEventListener("storage", function (e) { if (e.key === STYLE_KEY) applySubStyle(); });
   function updateCC() {
     ui.cc.hidden = subTracks.length === 0;
     ui.cc.classList.toggle("on", activeSub >= 0);
@@ -382,6 +492,12 @@
     var items = [{ label: "Off", sel: activeSub < 0, run: function () { setSub(-1); } }];
     subTracks.forEach(function (s, i) {
       items.push({ label: s.label, sub: s.lang && s.lang !== s.label ? s.lang : "", sel: activeSub === i, run: function () { setSub(i); } });
+    });
+    items.push({ label: "Style…", sub: "size, color, background, position", run: function () { setTimeout(openStyleMenu, 0); } });
+    items.push({
+      label: "Timing…",
+      sub: subOffset ? "delay " + (subOffset > 0 ? "+" : "") + subOffset.toFixed(1) + " s" : "in sync",
+      run: function () { setTimeout(openTimingMenu, 0); },
     });
     openMenu("subs", "Subtitles", items, true);
   }

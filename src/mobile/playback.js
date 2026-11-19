@@ -51,6 +51,34 @@ function currentSubtitle() {
 }
 
 let last = { active: false, playing: false };
+
+// The subtitle style chosen in the built-in player also applies (best effort)
+// to other sources' players that render standard <track> subtitles.
+let styledFrame = null, styledSig = "";
+function cueCss() {
+  let st = {};
+  try { st = JSON.parse(localStorage.getItem("streambert_subtitleStyle") || "{}"); } catch {}
+  const size = { s: 0.85, m: 1.05, l: 1.35, xl: 1.7 }[st.size] || null;
+  if (!size && !st.color && !st.bg) return "";
+  const bg = st.bg === "none" ? "transparent" : st.bg === "solid" ? "rgba(0,0,0,0.92)" : "rgba(0,0,0,0.62)";
+  return `video::cue{font-size:${size || 1.05}em!important;color:${st.color || "#fff"}!important;background:${bg}!important;` +
+    (st.bg === "none" ? "text-shadow:0 0 3px #000,0 0 3px #000,1px 1px 2px #000!important;" : "") + "}";
+}
+async function styleEmbedded(frame) {
+  if (!frame || frame.hasAttribute("data-sb-local-player")) return;
+  const src = frame.getAttribute("src") || "";
+  if (src.includes("/sb-player.html")) return; // our own player styles itself
+  const css = cueCss();
+  const sig = src + "|" + css;
+  if (!css || (frame === styledFrame && sig === styledSig)) return;
+  styledFrame = frame;
+  styledSig = sig;
+  // returns null on purpose so the bridge also walks into nested frames
+  const js = `(() => { let el = document.getElementById("sb-cue-style");
+    if (!el) { el = document.createElement("style"); el.id = "sb-cue-style"; (document.head || document.documentElement).appendChild(el); }
+    el.textContent = ${JSON.stringify(css)}; return null; })()`;
+  try { await execInFrame(frame, js, { deep: true, timeout: 2500 }); } catch {}
+}
 let intercepting = false;
 let lastFrame = null;
 let pip = false;
@@ -64,6 +92,7 @@ async function poll() {
     } catch {}
   }
   lastFrame = state ? frame : null;
+  if (state) styleEmbedded(frame);
   // in-app fullscreen only for the Movie/TV page player
   const want = !!frame?.closest?.(".player-wrap");
   if (want !== intercepting) {
