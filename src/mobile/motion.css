@@ -235,3 +235,41 @@ body.no-anim img.sb-img-pending {
     opacity: 1;
   }
 }
+
+/* mouse: posters zoom a little, rows and episodes slide, sidebar pops */
+@media (hover: hover) and (pointer: fine) {
+  .card-poster img {
+    transition: transform 0.45s var(--sb-ease-out);
+  }
+  .card:hover .card-poster img {
+    transform: scale(1.06);
+  }
+  .history-row {
+    transition: transform 0.2s var(--sb-ease-out), background-color 0.2s;
+  }
+  .history-row:hover {
+    transform: translate3d(4px, 0, 0);
+  }
+  .episode-card {
+    transition: transform 0.22s var(--sb-ease-out), box-shadow 0.22s, border-color 0.2s;
+  }
+  .episode-card:hover {
+    transform: translate3d(0, -3px, 0);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  }
+  .saved-thumb {
+    transition: transform 0.2s var(--sb-ease-out);
+  }
+  .saved-thumb:hover {
+    transform: scale(1.07);
+  }
+  .sidebar-btn:hover svg {
+    transform: scale(1.08);
+  }
+  .sidebar-btn svg {
+    transition: transform 0.2s var(--sb-ease-out);
+  }
+}
+html:not([data-mobile]) .sidebar-btn.active svg {
+  animation: sbNavPop 0.42s var(--sb-ease-spring) backwards;
+}
