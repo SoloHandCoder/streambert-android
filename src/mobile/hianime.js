@@ -417,6 +417,7 @@ export async function setPlayerVideo(args = {}) {
   p.set("src", proxied(url, referer));
   if (subtitle && /^https?:\/\//i.test(subtitle)) p.set("sub", proxied(subtitle, referer));
   if (start) p.set("t", String(start));
+  p.set("cast", "1");
   return { playerUrl: `${location.origin}/sb-player.html?${p.toString()}` };
 }
 

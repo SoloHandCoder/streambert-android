@@ -132,3 +132,8 @@ const MobileWebView = forwardRef(function MobileWebView(props, ref) {
 });
 
 export default MobileWebView;
+
+/** All mounted MobileWebView iframes (most recently mounted last). */
+export function allFrames() {
+  return [...frameRegistry.values()].filter((el) => el.isConnected);
+}

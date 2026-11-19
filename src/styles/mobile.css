@@ -1548,3 +1548,50 @@ html[data-mobile] .fade-in {
         transition-duration: 0.001ms !important;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Picture-in-picture: only the playing video is visible
+   ═══════════════════════════════════════════════════════════════════════════ */
+html[data-pip] body * {
+    visibility: hidden !important;
+}
+html[data-pip] .sidebar,
+html[data-pip] .player-overlay-group {
+    display: none !important;
+}
+html[data-pip] [data-sb-pip-target] {
+    visibility: visible !important;
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 2147483647 !important;
+    transform: none !important;
+    border-radius: 0 !important;
+}
+html[data-pip],
+html[data-pip] body {
+    background: #000 !important;
+    overflow: hidden !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Android TV / D-pad: visible focus ring
+   ═══════════════════════════════════════════════════════════════════════════ */
+html[data-tv] .gamepad-focused,
+html[data-keynav] .gamepad-focused {
+    outline: 3px solid var(--red) !important;
+    outline-offset: 3px !important;
+    border-radius: var(--radius);
+    box-shadow: 0 0 0 6px rgba(229, 9, 20, 0.25) !important;
+    transition: outline-color 0.1s, box-shadow 0.1s;
+}
+html[data-tv] .card.gamepad-focused,
+html[data-keynav] .card.gamepad-focused {
+    transform: scale(1.06);
+    z-index: 2;
+}
+html[data-tv] *:focus-visible {
+    outline: 3px solid var(--red);
+    outline-offset: 2px;
+}

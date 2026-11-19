@@ -24,6 +24,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(StreambertPlugin.class);
+        registerPlugin(CastPlugin.class);
         super.onCreate(savedInstanceState);
         AdBlock.load(this);
 
@@ -83,5 +84,52 @@ public class MainActivity extends BridgeActivity {
     public void onPause() {
         super.onPause();
         CookieManager.getInstance().flush();
+    }
+
+    // ───────────── picture-in-picture ─────────────
+    private boolean pipEligible = false;
+    private android.util.Rational pipAspect = new android.util.Rational(16, 9);
+
+    private boolean pipSupported() {
+        return android.os.Build.VERSION.SDK_INT >= 26
+                && getPackageManager().hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE);
+    }
+
+    private android.app.PictureInPictureParams buildPipParams() {
+        android.app.PictureInPictureParams.Builder b = new android.app.PictureInPictureParams.Builder()
+                .setAspectRatio(pipAspect);
+        if (android.os.Build.VERSION.SDK_INT >= 31) {
+            b.setAutoEnterEnabled(pipEligible);
+            b.setSeamlessResizeEnabled(true);
+        }
+        return b.build();
+    }
+
+    /** Called from JS (via the plugin) whenever playback starts/stops. */
+    public void updatePipParams(boolean playing, double aspect) {
+        pipEligible = playing;
+        if (aspect > 0.4 && aspect < 2.39) {
+            pipAspect = new android.util.Rational((int) Math.round(aspect * 1000), 1000);
+        }
+        if (!pipSupported()) return;
+        try { setPictureInPictureParams(buildPipParams()); } catch (Exception ignored) {}
+    }
+
+    public boolean enterPip() {
+        if (!pipSupported()) return false;
+        try { return enterPictureInPictureMode(buildPipParams()); } catch (Exception e) { return false; }
+    }
+
+    @Override
+    protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+        // Android 12+ auto-enters via setAutoEnterEnabled; older versions need this
+        if (pipEligible && android.os.Build.VERSION.SDK_INT >= 26 && android.os.Build.VERSION.SDK_INT < 31) enterPip();
+    }
+
+    @Override
+    public void onPictureInPictureModeChanged(boolean inPip, android.content.res.Configuration newConfig) {
+        super.onPictureInPictureModeChanged(inPip, newConfig);
+        StreambertPlugin.emit("pip", inPip);
     }
 }

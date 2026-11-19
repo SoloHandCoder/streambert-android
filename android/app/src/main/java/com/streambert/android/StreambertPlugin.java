@@ -63,6 +63,12 @@ public class StreambertPlugin extends Plugin {
             try { notifyListeners("downloadProgress", JSObject.fromJSONObject(update)); } catch (Exception ignored) {}
         });
         DownloadService.ensureChannels(getContext());
+        MediaControl.get(getContext()).setListener((cmd, value) -> {
+            JSObject o = new JSObject();
+            o.put("cmd", cmd);
+            o.put("value", value);
+            notifyListeners("mediaCommand", o);
+        });
     }
 
     static void emit(String event, boolean value) {
@@ -472,6 +478,82 @@ public class StreambertPlugin extends Plugin {
             r.put("ok", true);
             call.resolve(r);
         });
+    }
+
+
+    // ───────────── playback state: media session, PiP, brightness, volume ─────────────
+
+    @PluginMethod
+    public void setPlaybackState(PluginCall call) {
+        boolean active = call.getBoolean("active", false);
+        boolean playing = call.getBoolean("playing", false);
+        MediaControl.get(getContext()).update(active, playing, call.getString("title", ""),
+                call.getString("subtitle", ""), call.getDouble("position", 0.0), call.getDouble("duration", 0.0));
+        MainActivity a = (MainActivity) getActivity();
+        if (a != null) a.runOnUiThread(() -> a.updatePipParams(active && playing, call.getDouble("aspect", 16.0 / 9.0)));
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void enterPip(PluginCall call) {
+        MainActivity a = (MainActivity) getActivity();
+        JSObject r = new JSObject();
+        if (a == null) { r.put("ok", false); call.resolve(r); return; }
+        a.runOnUiThread(() -> {
+            r.put("ok", a.enterPip());
+            call.resolve(r);
+        });
+    }
+
+    @PluginMethod
+    public void setBrightness(PluginCall call) {
+        double v = call.getDouble("value", -1.0);
+        getActivity().runOnUiThread(() -> {
+            android.view.WindowManager.LayoutParams lp = getActivity().getWindow().getAttributes();
+            lp.screenBrightness = v < 0 ? android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                    : (float) Math.max(0.01, Math.min(1.0, v));
+            getActivity().getWindow().setAttributes(lp);
+        });
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void setVolume(PluginCall call) {
+        android.media.AudioManager am = (android.media.AudioManager) getContext().getSystemService(android.content.Context.AUDIO_SERVICE);
+        int max = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC);
+        int v = (int) Math.round(Math.max(0, Math.min(1, call.getDouble("value", 0.5))) * max);
+        try { am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, v, 0); } catch (Exception ignored) {}
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void getLevels(PluginCall call) {
+        android.media.AudioManager am = (android.media.AudioManager) getContext().getSystemService(android.content.Context.AUDIO_SERVICE);
+        int max = Math.max(1, am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC));
+        double vol = am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC) / (double) max;
+        getActivity().runOnUiThread(() -> {
+            float b = getActivity().getWindow().getAttributes().screenBrightness;
+            double bright = b;
+            if (b < 0) {
+                try {
+                    bright = android.provider.Settings.System.getInt(getContext().getContentResolver(),
+                            android.provider.Settings.System.SCREEN_BRIGHTNESS) / 255.0;
+                } catch (Exception e) { bright = 0.5; }
+            }
+            JSObject r = new JSObject();
+            r.put("brightness", bright);
+            r.put("volume", vol);
+            call.resolve(r);
+        });
+    }
+
+    @PluginMethod
+    public void getDeviceInfo(PluginCall call) {
+        android.app.UiModeManager um = (android.app.UiModeManager) getContext().getSystemService(android.content.Context.UI_MODE_SERVICE);
+        JSObject r = new JSObject();
+        r.put("tv", um != null && um.getCurrentModeType() == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION);
+        r.put("pip", Build.VERSION.SDK_INT >= 26 && getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE));
+        call.resolve(r);
     }
 
     // ───────────── self update (APK from GitHub releases) ─────────────

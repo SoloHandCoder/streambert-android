@@ -9,6 +9,8 @@ import * as hianime from "./hianime.js";
 import * as subs from "./subtitles.js";
 import { frameById, execInFrame } from "./MobileWebView.jsx";
 import { openLocalPlayer } from "./localPlayer.js";
+import { enterPip, setCastHandler, getPlaybackState } from "./playback.js";
+import { castAvailable, castMedia, stopCast, onCastState } from "./cast.js";
 
 const P = native.plugin;
 const PREFIX = "streambert_";
@@ -46,7 +48,10 @@ pathsReady.then((p) => {
 
 // ── native events → app events ───────────────────────────────────────────────
 if (isNative) {
-  native.on("m3u8Found", (d) => fire("m3u8-found", d.url));
+  native.on("m3u8Found", (d) => {
+    lastStreamUrl = d.url;
+    fire("m3u8-found", d.url);
+  });
   native.on("subtitleFound", (d) => {
     fire("subtitle-found", { url: d.url, lang: subs.extractSubtitleLang(d.url) });
   });
@@ -56,10 +61,6 @@ if (isNative) {
     const clean = { ...d };
     delete clean._dir;
     fire("download-progress", clean);
-    if (d.status === "completed" && !postProcessed.has(d.id)) {
-      postProcessed.add(d.id);
-      downloadEntrySubtitles(d).catch(() => {});
-    }
   });
   native.on("fullscreen", (d) => {
     if (!d.value) lastFsExit = Date.now();
@@ -70,6 +71,55 @@ if (isNative) {
 }
 
 const postProcessed = new Set();
+async function downloadFor(filePath) {
+  try {
+    return (await native.getDownloads()).find((d) => d.filePath === filePath) || null;
+  } catch {
+    return null;
+  }
+}
+let lastStreamUrl = null;
+
+// ── Chromecast ──────────────────────────────────────────────────────────────
+function refererFor(url) {
+  return hianime.hianimeReferers.get(url) || frameStreamMeta.get(url)?.referer || null;
+}
+async function castStream({ url, title, startTime = 0, isLocal = false, subtitleUrl = null } = {}) {
+  url = url || lastStreamUrl;
+  if (!url) {
+    toast("Start playback first, then cast");
+    return { ok: false, error: "No stream found yet" };
+  }
+  let res;
+  try {
+    res = await castMedia({
+      url,
+      title: title || document.querySelector(".main .detail-title")?.textContent?.trim() || "Streambert",
+      referer: isLocal ? undefined : refererFor(url) || undefined,
+      startTime: Math.floor(startTime || getPlaybackState().position || 0),
+      subtitleUrl: subtitleUrl || undefined,
+      isLocal,
+    });
+  } catch (e) {
+    res = { ok: false, error: String(e?.message || e) };
+  }
+  if (res?.ok) toast("Casting…");
+  else if (res?.error) toast(res.error);
+  return res;
+}
+setCastHandler(({ frame, t }) => {
+  if (frame?.hasAttribute("data-sb-local-player")) {
+    let key = null, title = null;
+    try {
+      const q = new URL(frame.src).searchParams;
+      key = q.get("key");
+      title = q.get("title");
+    } catch {}
+    if (key) castStream({ url: key, title, startTime: t, isLocal: key.startsWith("/") });
+  } else {
+    castStream({ startTime: t });
+  }
+});
 
 // Playlists detected by content inside player frames (see sb-inject.js)
 const frameStreamMeta = new Map();
@@ -90,6 +140,7 @@ window.addEventListener("message", (ev) => {
     lastMasterByReferer.set(d.referer, d.url);
   }
   frameStreamMeta.set(d.url, { referer: d.referer, origin: d.origin });
+  lastStreamUrl = d.url;
   fire("m3u8-found", d.url);
 });
 
@@ -305,10 +356,17 @@ const electron = {
   openPath: async (filePath) => {
     if (!filePath) return;
     if (/\.(log|txt)$/i.test(filePath)) return;
-    openLocalPlayer({ filePath, seconds: 0, subtitlePaths: [] });
+    const d = await downloadFor(filePath);
+    openLocalPlayer({ filePath, seconds: 0, subtitlePaths: d?.subtitlePaths || [], title: d?.name || "" });
   },
   openPathAtTime: async (filePath, seconds, subtitlePaths) => {
-    openLocalPlayer({ filePath, seconds, subtitlePaths: subtitlePaths || [] });
+    const d = await downloadFor(filePath);
+    openLocalPlayer({
+      filePath,
+      seconds,
+      subtitlePaths: subtitlePaths?.length ? subtitlePaths : d?.subtitlePaths || [],
+      title: d?.name || "",
+    });
   },
   getInstallPath: async () => (await pathsReady).files,
   openStreamExternal: safe(async ({ url, title }) => {
@@ -323,7 +381,10 @@ const electron = {
 
   // ── anime ──
   resolveHiAnime: (args) => hianime.resolveHiAnime(args),
-  setPlayerVideo: (args) => hianime.setPlayerVideo(args),
+  setPlayerVideo: (args) => {
+    if (args?.url) lastStreamUrl = args.url;
+    return hianime.setPlayerVideo(args);
+  },
   onHiAnimeProgress: (cb) => hianime.onHiAnimeProgress(cb),
   debugHiAnime: (args) => hianime.debugHiAnime(args),
 
@@ -391,7 +452,8 @@ const electron = {
   },
 
   // ── pop-out (PiP window) - not available, embedded players have their own PiP ──
-  openPipWindow: async () => ({ ok: false }),
+  // Pop-out button → Android picture-in-picture
+  openPipWindow: async () => enterPip(),
   closePipWindow: async () => {},
   getPipWebContentsId: async () => null,
   onPipOpened: (cb) => on("pip-opened", cb),
@@ -446,6 +508,14 @@ const electron = {
     if (!/^image\//.test(ct)) return null;
     return `data:${ct};base64,${res.data}`;
   }, null),
+
+  // Chromecast (mobile only)
+  castAvailable: async () => {
+    try { return !!(await castAvailable()); } catch { return false; }
+  },
+  castStream: (opts) => castStream(opts),
+  stopCast: async () => { try { await stopCast(); } catch {} },
+  onCastState: (cb) => onCastState(cb),
 
   // Discord RPC: desktop only
   discordRpcSetEnabled: async () => ({ ok: false }),

@@ -319,8 +319,9 @@ public final class Downloads {
                 if (new File(finalPath).length() < 64 * 1024) throw new IOException("Server returned no video (file too small)");
             }
             if (job.cancelled.get()) return;
+            JSONArray subPaths = downloadSubtitles(e, dir, name, headers);
             active.remove(id);
-            emit(id, "status", "completed", "progress", 100, "filePath", finalPath,
+            emit(id, "subtitlePaths", subPaths, "status", "completed", "progress", 100, "filePath", finalPath,
                     "completedAt", System.currentTimeMillis(), "lastMessage", "Completed", "speed", "",
                     "size", human(sizeOf(dir)));
         } catch (Throwable t) {
@@ -331,6 +332,54 @@ public final class Downloads {
         } finally {
             DownloadService.refresh(ctx);
         }
+    }
+
+    /** Saves the subtitles chosen/captured before the download next to the video. */
+    private JSONArray downloadSubtitles(JSONObject e, File dir, String name, Map<String, String> headers) {
+        JSONArray out = new JSONArray();
+        JSONArray subs = e.optJSONArray("subtitles");
+        if (subs == null) return out;
+        java.util.Set<String> used = new java.util.HashSet<>();
+        for (int i = 0; i < subs.length(); i++) {
+            JSONObject s = subs.optJSONObject(i);
+            if (s == null) continue;
+            String url = s.optString("url", "");
+            String lang = s.optString("lang", "unknown").replaceAll("[^A-Za-z0-9_-]", "");
+            if (lang.isEmpty()) lang = "unknown";
+            if (lang.length() > 12) lang = lang.substring(0, 12);
+            try {
+                byte[] data;
+                String ext = "vtt";
+                if (url.startsWith("data:")) {
+                    int comma = url.indexOf(',');
+                    String meta = url.substring(5, comma);
+                    String payload = url.substring(comma + 1);
+                    data = meta.contains(";base64") ? android.util.Base64.decode(payload, android.util.Base64.DEFAULT)
+                            : java.net.URLDecoder.decode(payload, "UTF-8").getBytes(StandardCharsets.UTF_8);
+                    if (meta.toLowerCase().contains("srt") || meta.toLowerCase().contains("subrip")) ext = "srt";
+                } else if (url.startsWith("http")) {
+                    Net.Response r = Net.open(url, "GET", headers, null, 15000);
+                    if (r.status >= 400) { r.conn.disconnect(); continue; }
+                    String ct = r.headers.getOrDefault("content-type", "").toLowerCase();
+                    data = r.bytes(10L * 1024 * 1024);
+                    if (url.toLowerCase().split("\\?")[0].endsWith(".srt") || ct.contains("srt") || ct.contains("subrip")) ext = "srt";
+                } else continue;
+                if (data.length == 0) continue;
+                String fname = name + "." + lang + "." + ext;
+                int n = 2;
+                while (used.contains(fname)) fname = name + "." + lang + "." + (n++) + "." + ext;
+                used.add(fname);
+                File f = new File(dir, fname);
+                try (FileOutputStream o = new FileOutputStream(f)) { o.write(data); }
+                JSONObject sp = new JSONObject();
+                sp.put("lang", s.optString("lang", "unknown"));
+                sp.put("path", f.getAbsolutePath());
+                sp.put("name", s.optString("name", fname));
+                sp.put("file_id", s.has("file_id") ? s.get("file_id") : JSONObject.NULL);
+                out.put(sp);
+            } catch (Exception ignored) {}
+        }
+        return out;
     }
 
     private static final Pattern ATTR = Pattern.compile("([A-Z0-9-]+)=(\"[^\"]*\"|[^,]*)");

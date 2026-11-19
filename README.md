@@ -12,6 +12,11 @@ Android port of [Streambert](https://github.com/truelockmc/streambert) (Electron
   - `StreamProxy` — in-WebView media proxy that adds the Referer (replaces the desktop's local player server for HiAnime).
   - `Downloads` + `DownloadService` — native HLS downloader (best quality, 6 parallel connections, keys/init segments, background foreground-service). Downloads play offline in-app.
 - **HiAnime** resolver and **subtitles** (SubDL / Wyzie) ported to browser JS using native HTTP (no CORS).
+- **Picture-in-picture**: leaving the app while a video plays (or the pop-out button) shrinks it into a floating window.
+- **Lock-screen & notification controls** (`MediaControl` + `MediaPlaybackService`): play/pause/±10s from the lock screen, notification and headset buttons; playback continues with the screen off.
+- **In-app player** (`public/sb-player.*`): custom controls, double-tap ±10s, swipe to seek, brightness (left) and volume (right), quality/speed menus, subtitles (SRT converted), resume for downloads.
+- **Android TV**: launcher banner, D-pad / remote navigation (reuses the desktop controller navigation).
+- **Chromecast** (`CastPlugin` + `LanServer`): casts streams and downloads to the Default Media Receiver; the phone serves/proxies the media over the local network with the right headers.
 
 ## Build (local, no CI)
 Requirements: Node 22+, JDK 21, Android SDK (platform 35).
