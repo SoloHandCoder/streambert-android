@@ -1,6 +1,6 @@
 {
   "name": "streambert-android",
-  "version": "2.7.0",
+  "version": "2.7.1",
   "description": "Streambert Android port",
   "license": "GPL-3.0",
   "private": true,
@@ -8,7 +8,8 @@
   "scripts": {
     "build": "vite build",
     "sync": "vite build && npx cap sync android",
-    "apk": "vite build && npx cap sync android && cd android && gradlew.bat assembleRelease"
+    "apk": "vite build && npx cap sync android && cd android && gradlew.bat assembleRelease",
+    "release": "node scripts/release.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.0",

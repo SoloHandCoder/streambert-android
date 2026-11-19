@@ -745,7 +745,7 @@ html[data-mobile] .search-box {
     width: 100%;
     max-width: 680px;
     border-radius: 14px;
-    box-shadow: 0 12px 30px color-mix(in srgb, var(--bg) 60%, transparent);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.60);
 }
 
 html[data-mobile] .search-input-wrap {
@@ -805,7 +805,7 @@ html[data-mobile] .detail-content {
 }
 
 html[data-mobile] .detail-poster {
-    box-shadow: 0 6px 18px color-mix(in srgb, var(--bg) 55%, transparent);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
 }
 
 html[data-mobile] .detail-type {
@@ -1304,7 +1304,7 @@ html[data-mobile] .cast-modal {
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     padding-bottom: var(--m-safe-b);
-    box-shadow: 0 -10px 30px color-mix(in srgb, var(--bg) 60%, transparent);
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.60);
     animation: m-sheet-up 0.22s ease;
 }
 

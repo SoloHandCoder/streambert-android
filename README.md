@@ -25,10 +25,19 @@ gradlew.bat assembleRelease
 ```
 Output: `android/app/build/outputs/apk/release/app-release.apk`.
 
+## Releasing
+```
+node scripts/release.mjs 2.7.2 --notes-file notes.md
+```
+Bumps the version (package.json + `android/app/build.gradle`), builds the signed APK into `release/`, commits, tags `v<version>-android`, pushes, and creates the GitHub release with the APK attached.
+
+## Auto-update
+The app checks this repo's GitHub releases on startup (Settings → "Check for updates on startup") and in Settings → Check for Updates. If a newer `v*-android` release has an `.apk` asset, "Install Update" downloads it and opens the Android installer (asks once for "Install unknown apps"). The repo must be **public** for this, since the app calls the GitHub API without a token.
+
 Release signing reads `android/keystore.properties` (not committed). Without it, the release APK is unsigned; use `assembleDebug` for a quick installable build.
 
 ## Differences from desktop
-- No pop-out (PiP) window, Discord RPC, or desktop auto-updater.
+- No pop-out (PiP) window or Discord RPC. Updates come from this repo (APK) instead of the desktop releases.
 - Downloads are saved in the app's storage (`Android/data/com.streambert.android/files/Movies/Streambert`) as HLS folders or MP4 and play in the built-in player; "folder" opens them in an external player (e.g. VLC).
 - External player = Android "Open with" (VLC, MX Player, …).
 

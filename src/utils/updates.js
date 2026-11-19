@@ -3,8 +3,8 @@
 //
 // Supports multiple release sources (GitHub + Codeberg).
 
-export const GITHUB_REPO = "truelockmc/streambert";
-export const CODEBERG_REPO = "truelockmc/streambert";
+// Android port: updates come from the Android repo's releases (APK assets)
+export const GITHUB_REPO = "SoloHandCoder/streambert-android";
 
 // ── Source registry ───────────────────────────────────────────────────────────
 // Each entry just describes *where* to fetch from and how to build the
@@ -17,22 +17,20 @@ export const UPDATE_SOURCES = {
     headers: { Accept: "application/vnd.github+json" },
     fallbackUrl: `https://github.com/${GITHUB_REPO}/releases/latest`,
   },
-  codeberg: {
-    id: "codeberg",
-    label: "Codeberg",
-    apiUrl: `https://codeberg.org/api/v1/repos/${CODEBERG_REPO}/releases?limit=10`,
-    headers: { Accept: "application/json" },
-    fallbackUrl: `https://codeberg.org/${CODEBERG_REPO}/releases`,
-  },
 };
 
 export const DEFAULT_UPDATE_SOURCE = "github";
 
 // Normalise "1.3" → "1.3.0" so semver comparison works correctly
 export function normaliseVersion(v) {
-  const parts = String(v).replace(/^v/i, "").split(".");
-  while (parts.length < 3) parts.push("0");
-  return parts.slice(0, 3).map(Number);
+  // "v2.7.1-android" → [2, 7, 1]
+  const parts = String(v)
+    .replace(/^v/i, "")
+    .split(/[-+]/)[0]
+    .split(".")
+    .map((p) => parseInt(p, 10) || 0);
+  while (parts.length < 3) parts.push(0);
+  return parts.slice(0, 3);
 }
 
 // Returns true only when `a` is strictly greater than `b` (semver arrays)
@@ -76,7 +74,7 @@ export async function checkForUpdates(source = DEFAULT_UPDATE_SOURCE) {
     : null;
   if (!data) throw new Error(`No stable release found on ${cfg.label}`);
 
-  const latestRaw = (data.tag_name || "").replace(/^v/i, "");
+  const latestRaw = (data.tag_name || "").replace(/^v/i, "").replace(/-android$/i, "");
   const latestParts = normaliseVersion(latestRaw);
   const currentParts = normaliseVersion(currentVersion);
   const url = data.html_url || cfg.fallbackUrl;
@@ -86,7 +84,8 @@ export async function checkForUpdates(source = DEFAULT_UPDATE_SOURCE) {
   for (const asset of data.assets || []) {
     const name = (asset.name || "").toLowerCase();
     const downloadUrl = asset.browser_download_url;
-    if (name.endsWith(".appimage")) assets.appimage = downloadUrl;
+    if (name.endsWith(".apk")) assets.apk = downloadUrl;
+    else if (name.endsWith(".appimage")) assets.appimage = downloadUrl;
     else if (name.endsWith(".deb")) assets.deb = downloadUrl;
     else if (name.endsWith(".exe")) assets.exe = downloadUrl;
     else if (name.endsWith(".pacman")) assets.pacman = downloadUrl;

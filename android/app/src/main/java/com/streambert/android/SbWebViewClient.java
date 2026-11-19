@@ -41,6 +41,10 @@ public class SbWebViewClient extends BridgeWebViewClient {
             String lower = s.toLowerCase();
             if (lower.contains(".m3u8")) StreambertPlugin.onMediaFound(s, request.getRequestHeaders(), false);
             else if (lower.contains(".vtt")) StreambertPlugin.onMediaFound(s, request.getRequestHeaders(), true);
+            if (FrameHeaderStrip.isSubframeDocument(request)) {
+                WebResourceResponse r = FrameHeaderStrip.fetch(request);
+                if (r != null) return r;
+            }
         }
         return super.shouldInterceptRequest(view, request);
     }

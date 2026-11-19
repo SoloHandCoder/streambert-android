@@ -507,6 +507,7 @@ export default function UpdateModal({
 
   const formatLabel =
     {
+      apk: "Android APK",
       appimage: "AppImage",
       deb: ".deb package",
       pacman: ".pacman (Arch)",

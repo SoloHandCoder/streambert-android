@@ -51,6 +51,7 @@ if (isNative) {
     fire("subtitle-found", { url: d.url, lang: subs.extractSubtitleLang(d.url) });
   });
   native.on("blocked", (d) => fire("blocked-stats-update", d));
+  native.on("updateProgress", (d) => fire("update-progress", d));
   native.on("downloadProgress", (d) => {
     const clean = { ...d };
     delete clean._dir;
@@ -412,10 +413,10 @@ const electron = {
     document.documentElement.style.zoom = String(factor);
   },
 
-  // ── updates: the desktop auto-updater installs desktop builds → disabled ──
-  detectUpdateFormat: async () => null,
-  downloadAndInstallUpdate: async () => ({ ok: false, error: "Updates are installed by downloading a new APK." }),
-  cancelUpdate: async () => {},
+  // ── updates: APK from github.com/SoloHandCoder/streambert-android releases ──
+  detectUpdateFormat: async () => "apk",
+  downloadAndInstallUpdate: safe(async ({ url }) => P.installUpdate({ url })),
+  cancelUpdate: async () => { try { await P.cancelUpdate(); } catch {} },
   onUpdateProgress: (cb) => on("update-progress", cb),
   offUpdateProgress: (h) => off("update-progress", h),
 

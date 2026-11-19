@@ -473,4 +473,98 @@ public class StreambertPlugin extends Plugin {
             call.resolve(r);
         });
     }
+
+    // ───────────── self update (APK from GitHub releases) ─────────────
+
+    private volatile boolean updateCancelled = false;
+
+    @PluginMethod
+    public void installUpdate(PluginCall call) {
+        updateCancelled = false;
+        String url = call.getString("url", "");
+        io.execute(() -> {
+            JSObject res = new JSObject();
+            try {
+                if (Build.VERSION.SDK_INT >= 26 && !getContext().getPackageManager().canRequestPackageInstalls()) {
+                    Intent i = new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                            Uri.parse("package:" + getContext().getPackageName()));
+                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    getContext().startActivity(i);
+                    JSObject w = new JSObject();
+                    w.put("percent", 0);
+                    w.put("label", "Allow \"Install unknown apps\" for Streambert, then come back…");
+                    notifyListeners("updateProgress", w);
+                    // wait (up to 3 min) until the user grants it, then continue
+                    long until = System.currentTimeMillis() + 180_000;
+                    while (!getContext().getPackageManager().canRequestPackageInstalls()) {
+                        if (updateCancelled || System.currentTimeMillis() > until) {
+                            res.put("ok", false);
+                            res.put("error", updateCancelled ? "Cancelled" : "Permission \"Install unknown apps\" was not granted.");
+                            call.resolve(res);
+                            return;
+                        }
+                        Thread.sleep(500);
+                    }
+                }
+                Map<String, String> h = new HashMap<>();
+                h.put("Accept", "application/octet-stream");
+                Net.Response r = Net.open(url, "GET", h, null, 20000);
+                if (r.status >= 400) { r.conn.disconnect(); throw new java.io.IOException("HTTP " + r.status); }
+                long total = -1;
+                try { total = Long.parseLong(r.headers.getOrDefault("content-length", "-1")); } catch (Exception ignored) {}
+                File dir = new File(getContext().getCacheDir(), "update");
+                //noinspection ResultOfMethodCallIgnored
+                dir.mkdirs();
+                File apk = new File(dir, "streambert-update.apk");
+                long got = 0, last = 0;
+                try (java.io.InputStream in = r.body; FileOutputStream out = new FileOutputStream(apk)) {
+                    byte[] buf = new byte[65536];
+                    int n;
+                    while ((n = in.read(buf)) > 0) {
+                        if (updateCancelled) throw new java.io.IOException("cancelled");
+                        out.write(buf, 0, n);
+                        got += n;
+                        long now = System.currentTimeMillis();
+                        if (now - last > 250) {
+                            last = now;
+                            JSObject p = new JSObject();
+                            p.put("percent", total > 0 ? (int) (got * 100 / total) : 0);
+                            p.put("label", String.format(java.util.Locale.US, "Downloading… %.1f MB%s", got / 1e6,
+                                    total > 0 ? String.format(java.util.Locale.US, " / %.1f MB", total / 1e6) : ""));
+                            notifyListeners("updateProgress", p);
+                        }
+                    }
+                } finally { r.conn.disconnect(); }
+                if (apk.length() < 500_000) throw new java.io.IOException("Downloaded file is not a valid APK");
+                JSObject p = new JSObject();
+                p.put("percent", 100);
+                p.put("label", "Launching installer…");
+                notifyListeners("updateProgress", p);
+                // Android blocks activity starts from the background → wait until the app is in front
+                androidx.appcompat.app.AppCompatActivity act = (androidx.appcompat.app.AppCompatActivity) getActivity();
+                long until2 = System.currentTimeMillis() + 300_000;
+                while (!act.getLifecycle().getCurrentState().isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
+                    if (updateCancelled || System.currentTimeMillis() > until2) throw new java.io.IOException("cancelled");
+                    Thread.sleep(300);
+                }
+                Uri uri = FileProvider.getUriForFile(getContext(), getContext().getPackageName() + ".fileprovider", apk);
+                Intent i = new Intent(Intent.ACTION_VIEW);
+                i.setDataAndType(uri, "application/vnd.android.package-archive");
+                i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                act.runOnUiThread(() -> act.startActivity(i));
+                res.put("ok", true);
+                call.resolve(res);
+            } catch (Exception e) {
+                res.put("ok", false);
+                res.put("error", "cancelled".equals(e.getMessage()) ? "Cancelled" : "Update failed: " + e.getMessage());
+                call.resolve(res);
+            }
+        });
+    }
+
+    @PluginMethod
+    public void cancelUpdate(PluginCall call) {
+        updateCancelled = true;
+        call.resolve();
+    }
 }
