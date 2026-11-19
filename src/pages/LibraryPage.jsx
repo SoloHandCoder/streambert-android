@@ -6,6 +6,7 @@ import { useRatings, getRatingForItem } from "../utils/useRatings";
 import { isRestricted } from "../utils/ageRating";
 import { storage, STORAGE_KEYS } from "../utils/storage";
 import { MyListsSection, StatsSection } from "../mobile/LibraryUI";
+import { UpcomingSection } from "../mobile/DiscoveryUI";
 
 export default function LibraryPage({
   history,
@@ -128,6 +129,8 @@ export default function LibraryPage({
           </div>
         </div>
       )}
+
+      {isMobile && <UpcomingSection apiKey={apiKey} saved={saved} history={history} onSelect={onSelect} />}
 
       {isMobile && (
         <MyListsSection

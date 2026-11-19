@@ -413,6 +413,8 @@ const electron = {
   deleteAllDownloads: safe(() => P.deleteAllDownloads()),
   pauseDownload: safe((id) => P.pauseDownload({ id })),
   captureStream: (url, timeout) => captureStream(url, timeout),
+  // "" when cancelled; throws when the device has no voice input
+  voiceSearch: async () => (await P.voiceSearch({ prompt: "Say a movie or show" }))?.text || "",
   resumeDownload: safe((id) => P.resumeDownload({ id })),
   getDownloadsSize: safe(() => P.getDownloadsSize(), { bytes: 0 }),
   showInFolder: async (path) => {

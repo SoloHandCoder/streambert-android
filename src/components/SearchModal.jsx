@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { tmdbFetch, imgUrl } from "../utils/api";
 import { SearchIcon, CloseIcon } from "./Icons";
+import "../mobile/discovery.css";
 import { storage } from "../utils/storage";
 
 const HISTORY_KEY = "searchHistory";
@@ -16,6 +17,8 @@ function saveHistory(history) {
 
 export default function SearchModal({ apiKey, onSelect, onClose, offline }) {
   const [query, setQuery] = useState("");
+  const [listening, setListening] = useState(false);
+  const [voiceMsg, setVoiceMsg] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState(loadHistory);
@@ -124,6 +127,31 @@ export default function SearchModal({ apiKey, onSelect, onClose, offline }) {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKey}
           />
+          {window.electron?.voiceSearch && !query && (
+            <button
+              className={`btn btn-ghost btn-icon sbu-mic${listening ? " listening" : ""}`}
+              aria-label="Search by voice"
+              title="Search by voice"
+              onClick={async () => {
+                setListening(true);
+                try {
+                  const t = await window.electron.voiceSearch();
+                  if (t) setQuery(t);
+                } catch {
+                  setVoiceMsg("Voice input isn't available on this device.");
+                  setTimeout(() => setVoiceMsg(""), 3000);
+                } finally {
+                  setListening(false);
+                  inputRef.current?.focus();
+                }
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="9" y="3" width="6" height="11" rx="3" />
+                <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+              </svg>
+            </button>
+          )}
           {query ? (
             <button
               className="btn btn-ghost btn-icon"
@@ -137,6 +165,9 @@ export default function SearchModal({ apiKey, onSelect, onClose, offline }) {
             </button>
           )}
         </div>
+        {voiceMsg && (
+          <div style={{ padding: "8px 20px", fontSize: 13, color: "var(--text3)" }}>{voiceMsg}</div>
+        )}
 
         <div className="search-results">
           {offline && (

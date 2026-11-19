@@ -5,7 +5,13 @@ import { storage } from "./storage";
 
 export const HOME_ROWS = [
   { id: "continue", label: "Continue Watching" },
+  ...(typeof window !== "undefined" && window.electron?.isMobile
+    ? [{ id: "upcoming", label: "Coming up (new episodes)" }]
+    : []),
   { id: "recommended", label: "Recommended for You" },
+  ...(typeof window !== "undefined" && window.electron?.isMobile
+    ? [{ id: "because", label: "Because you watched…" }]
+    : []),
   { id: "trendingMovies", label: "Trending Movies" },
   { id: "trendingTV", label: "Trending Series" },
   { id: "topRated", label: "Top Rated" },

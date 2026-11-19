@@ -3,7 +3,11 @@ package com.streambert.android;
 import android.Manifest;
 import android.app.NotificationManager;
 import android.content.ActivityNotFoundException;
+import android.app.Activity;
 import android.content.Intent;
+import android.speech.RecognizerIntent;
+import androidx.activity.result.ActivityResult;
+import com.getcapacitor.annotation.ActivityCallback;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.media.MediaMetadataRetriever;
@@ -410,6 +414,35 @@ public class StreambertPlugin extends Plugin {
     }
 
     // ───────────── system ─────────────
+
+    /** Voice search with the phone's speech recognizer (Google / Samsung voice input). */
+    @PluginMethod
+    public void voiceSearch(PluginCall call) {
+        Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_WEB_SEARCH);
+        i.putExtra(RecognizerIntent.EXTRA_PROMPT, call.getString("prompt", "Say a movie or show"));
+        i.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
+        try {
+            startActivityForResult(call, i, "voiceResult");
+        } catch (ActivityNotFoundException e) {
+            call.reject("Voice input isn't available on this device", "UNAVAILABLE");
+        } catch (Exception e) {
+            call.reject("Voice input isn't available on this device", "UNAVAILABLE");
+        }
+    }
+
+    @ActivityCallback
+    private void voiceResult(PluginCall call, ActivityResult result) {
+        if (call == null) return;
+        JSObject r = new JSObject();
+        String text = "";
+        if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+            java.util.ArrayList<String> list = result.getData().getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+            if (list != null && !list.isEmpty() && list.get(0) != null) text = list.get(0);
+        }
+        r.put("text", text);
+        call.resolve(r);
+    }
 
     @PluginMethod
     public void openExternal(PluginCall call) {

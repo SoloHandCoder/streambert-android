@@ -1142,6 +1142,7 @@ export default function App() {
                 onMarkUnwatched={markUnwatched}
                 history={history}
                 apiKey={apiKey}
+                saved={saved}
               />
             )}
             {page === "movie" && selected && (
