@@ -234,6 +234,7 @@ public final class Downloads {
             e.put("id", id);
             e.put("name", args.optString("name", "Video"));
             e.put("m3u8Url", args.optString("m3u8Url"));
+            e.put("quality", args.optInt("quality", 0)); // max height, 0 = best
             e.put("downloadPath", baseDir().getAbsolutePath());
             e.put("filePath", JSONObject.NULL);
             e.put("status", "downloading");
@@ -462,7 +463,7 @@ public final class Downloads {
                 String text = probe.text();
                 if (!text.trim().startsWith("#EXTM3U")) throw new IOException("Not a valid HLS playlist (HTTP " + probe.status + ")");
                 update(id, new JSONObject().put("_kind", "hls"));
-                finalPath = downloadHls(id, probe.url, text, dir, headers, job);
+                finalPath = downloadHls(id, probe.url, text, dir, headers, job, e.optInt("quality", 0));
                 if (job.cancelled.get()) return;
                 finish(id, e, dir, name, headers, finalPath, true, job);
             } else {
@@ -622,12 +623,14 @@ public final class Downloads {
         } catch (Exception e) { return rel; }
     }
 
-    private String downloadHls(String id, String url, String text, File dir, Map<String, String> headers, Job job) throws Exception {
+    private String downloadHls(String id, String url, String text, File dir, Map<String, String> headers, Job job, int maxHeight) throws Exception {
         if (text.contains("#EXT-X-STREAM-INF")) {
             // master playlist → best variant
             String[] lines = text.split("\r?\n");
             long bestBw = -1;
             String bestUri = null, bestInf = null;
+            long lowH = Long.MAX_VALUE;
+            String lowUri = null, lowInf = null; // smallest variant, if nothing fits maxHeight
             Map<String, String> audioByGroup = new HashMap<>();
             for (int i = 0; i < lines.length; i++) {
                 String l = lines[i].trim();
@@ -642,14 +645,20 @@ public final class Downloads {
                     long bw = 0;
                     try { bw = Long.parseLong(a.getOrDefault("BANDWIDTH", "0")); } catch (Exception ignored) {}
                     String res = a.get("RESOLUTION");
+                    long h = -1;
                     if (res != null && res.contains("x")) {
-                        try { bw += Long.parseLong(res.split("x")[1]) * 1_000_000_000L; } catch (Exception ignored) {}
+                        try { h = Long.parseLong(res.split("x")[1]); bw += h * 1_000_000_000L; } catch (Exception ignored) {}
                     }
                     int j = i + 1;
                     while (j < lines.length && (lines[j].trim().isEmpty() || lines[j].trim().startsWith("#"))) j++;
-                    if (j < lines.length && bw > bestBw) { bestBw = bw; bestUri = abs(url, lines[j]); bestInf = l; }
+                    if (j >= lines.length) continue;
+                    if (h > 0 && h < lowH) { lowH = h; lowUri = abs(url, lines[j]); lowInf = l; }
+                    // chosen quality: allow a little slack (1088p, 736p …)
+                    boolean fits = maxHeight <= 0 || h <= 0 || h <= maxHeight + 40;
+                    if (fits && bw > bestBw) { bestBw = bw; bestUri = abs(url, lines[j]); bestInf = l; }
                 }
             }
+            if (bestUri == null && lowUri != null) { bestUri = lowUri; bestInf = lowInf; }
             if (bestUri == null) throw new IOException("No playable variant in playlist");
             Map<String, String> inf = attrs(bestInf);
             String audioUrl = inf.containsKey("AUDIO") ? audioByGroup.get(inf.get("AUDIO")) : null;

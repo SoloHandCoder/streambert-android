@@ -420,6 +420,7 @@ const electron = {
   resumeDownload: safe((id) => P.resumeDownload({ id })),
   getDownloadsSize: safe(() => P.getDownloadsSize(), { bytes: 0 }),
   scheduleReminders: (items) => P.scheduleReminders({ items: items || [] }),
+  verifyUser: async (title) => !!(await P.verifyUser({ title: title || "Streambert" }))?.ok,
   networkInfo: async () => {
     try {
       return await P.networkInfo();

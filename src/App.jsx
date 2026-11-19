@@ -1,3 +1,4 @@
+import KidsGate from "./mobile/KidsGate";
 import { onEpisodeWatched } from "./mobile/smartDownloads.js";
 import DiscoverPage from "./mobile/DiscoverPage";
 import PersonPage from "./mobile/PersonPage";
@@ -1237,11 +1238,13 @@ export default function App() {
               />
             )}
             {page === "settings" && (
+              <KidsGate onDenied={() => setPage("home")}>
               <SettingsPage
                 apiKey={apiKey}
                 onChangeApiKey={changeApiKey}
                 initialSection={selected?.section}
               />
+              </KidsGate>
             )}
             {page === "downloads" && (
               <DownloadsPage

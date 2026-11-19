@@ -693,6 +693,23 @@ public class StreambertPlugin extends Plugin {
         call.resolve(r);
     }
 
+    /** Fingerprint / phone PIN check (kids profile: unlock with the phone's own lock). */
+    @PluginMethod
+    public void verifyUser(PluginCall call) {
+        if (AppLock.availability(getContext()) != androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS || getActivity() == null) {
+            JSObject r = new JSObject();
+            r.put("ok", false);
+            call.resolve(r);
+            return;
+        }
+        getActivity().runOnUiThread(() -> AppLock.authenticate((androidx.appcompat.app.AppCompatActivity) getActivity(),
+                call.getString("title", "Streambert"), ok -> {
+                    JSObject r = new JSObject();
+                    r.put("ok", ok);
+                    call.resolve(r);
+                }));
+    }
+
     /** Changing the lock always asks for verification first. */
     @PluginMethod
     public void setLockSettings(PluginCall call) {
