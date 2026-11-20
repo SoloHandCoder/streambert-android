@@ -1,6 +1,6 @@
 """Generate all Android icon assets from the logo in public/logo.svg.
 
-Style: Streambert red with a subtle top→bottom gradient, white logo at ~60 %
+Style: Vidra red with a subtle top→bottom gradient, white logo at ~60 %
 of the visible icon, soft drop shadow.
 
     python scripts/make-icons.py
@@ -173,12 +173,12 @@ def main():
         except Exception:
             continue
     font = font or ImageFont.load_default()
-    tw = d.textlength("STREAMBERT", font=font)
+    tw = d.textlength("VIDRA", font=font)
     tx = 300
     if tx + tw > W - 24:
         font = ImageFont.truetype(font.path, int(92 * (W - 24 - tx) / tw)) if hasattr(font, "path") else font
-    d.text((tx + 3, H / 2 + 4), "STREAMBERT", font=font, fill=SHADOW + (140,), anchor="lm")
-    d.text((tx, H / 2), "STREAMBERT", font=font, fill=(255, 255, 255, 255), anchor="lm")
+    d.text((tx + 3, H / 2 + 4), "VIDRA", font=font, fill=SHADOW + (140,), anchor="lm")
+    d.text((tx, H / 2), "VIDRA", font=font, fill=(255, 255, 255, 255), anchor="lm")
     save(tv.convert("RGB"), "drawable-xhdpi", "tv_banner.png")
     old = os.path.join(RES, "drawable", "tv_banner.png")
     if os.path.exists(old):

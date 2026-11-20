@@ -479,7 +479,7 @@ public class StreambertPlugin extends Plugin {
     @PluginMethod
     public void openInPlayer(PluginCall call) {
         String url = call.getString("url", "");
-        String title = call.getString("title", "Streambert");
+        String title = call.getString("title", "Vidra");
         try {
             Uri uri;
             String type;
@@ -530,7 +530,7 @@ public class StreambertPlugin extends Plugin {
             NotificationCompat.Builder b = new NotificationCompat.Builder(getContext(), "events")
                     .setSmallIcon(R.drawable.ic_stat_streambert)
                     .setColor(0xFFE50914)
-                    .setContentTitle(call.getString("title", "Streambert"))
+                    .setContentTitle(call.getString("title", "Vidra"))
                     .setContentText(call.getString("body", ""))
                     .setAutoCancel(true);
             String url = call.getString("url", null);
@@ -746,7 +746,7 @@ public class StreambertPlugin extends Plugin {
             return;
         }
         getActivity().runOnUiThread(() -> AppLock.authenticate((androidx.appcompat.app.AppCompatActivity) getActivity(),
-                call.getString("title", "Streambert"), ok -> {
+                call.getString("title", "Vidra"), ok -> {
                     JSObject r = new JSObject();
                     r.put("ok", ok);
                     call.resolve(r);
@@ -920,7 +920,7 @@ public class StreambertPlugin extends Plugin {
                     getContext().startActivity(i);
                     JSObject w = new JSObject();
                     w.put("percent", 0);
-                    w.put("label", "Allow \"Install unknown apps\" for Streambert, then come back…");
+                    w.put("label", "Allow \"Install unknown apps\" for Vidra, then come back…");
                     notifyListeners("updateProgress", w);
                     // wait (up to 3 min) until the user grants it, then continue
                     long until = System.currentTimeMillis() + 180_000;

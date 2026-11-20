@@ -84,7 +84,7 @@ final class AppLock {
         int s = dp(96);
         col.addView(logo, new LinearLayout.LayoutParams(s, s));
         TextView t = new TextView(activity);
-        t.setText("Streambert is locked");
+        t.setText("Vidra is locked");
         t.setTextColor(Color.parseColor("#F0F0F0"));
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
         t.setPadding(0, dp(20), 0, dp(6));
@@ -134,7 +134,7 @@ final class AppLock {
             return;
         }
         prompting = true;
-        authenticate(activity, "Unlock Streambert", new Callback() {
+        authenticate(activity, "Unlock Vidra", new Callback() {
             @Override public void done(boolean ok) {
                 prompting = false;
                 if (ok) unlock();

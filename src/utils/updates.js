@@ -4,7 +4,7 @@
 // Supports multiple release sources (GitHub + Codeberg).
 
 // Android port: updates come from the Android repo's releases (APK assets)
-export const GITHUB_REPO = "SoloHandCoder/streambert-android";
+export const GITHUB_REPO = "SoloHandCoder/vidra-android";
 
 // ── Source registry ───────────────────────────────────────────────────────────
 // Each entry just describes *where* to fetch from and how to build the

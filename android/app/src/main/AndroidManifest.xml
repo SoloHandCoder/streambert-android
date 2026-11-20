@@ -43,16 +43,17 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="streambert" />
+                <data android:scheme="vidra" />
             </intent-filter>
 
-            <!-- "Share" a TMDB / IMDb link (or any text) to Streambert -->
+            <!-- "Share" a TMDB / IMDb link (or any text) to Vidra -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
 
-            <!-- "Open with Streambert" for TMDB / IMDb title links -->
+            <!-- "Open with Vidra" for TMDB / IMDb title links -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

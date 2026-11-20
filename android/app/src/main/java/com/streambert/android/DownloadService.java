@@ -55,7 +55,7 @@ public class DownloadService extends Service {
         return new NotificationCompat.Builder(ctx, CHANNEL)
                 .setSmallIcon(R.drawable.ic_stat_streambert)
                     .setColor(0xFFE50914)
-                .setContentTitle("Streambert")
+                .setContentTitle("Vidra")
                 .setContentText(n == 1 ? "Downloading 1 item…" : "Downloading " + n + " items…")
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)

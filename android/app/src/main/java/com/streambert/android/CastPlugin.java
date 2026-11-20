@@ -327,7 +327,7 @@ public class CastPlugin extends Plugin {
                 : lowerUrl.endsWith(".webm") ? "video/webm" : "video/mp4";
 
         MediaMetadata md = new MediaMetadata(MediaMetadata.MEDIA_TYPE_MOVIE);
-        md.putString(MediaMetadata.KEY_TITLE, title == null || title.isEmpty() ? "Streambert" : title);
+        md.putString(MediaMetadata.KEY_TITLE, title == null || title.isEmpty() ? "Vidra" : title);
 
         MediaInfo.Builder mb = new MediaInfo.Builder(contentUrl)
                 .setContentUrl(contentUrl)

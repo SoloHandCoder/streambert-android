@@ -34,7 +34,7 @@ public final class MediaControl {
 
     private MediaControl(Context ctx) {
         this.ctx = ctx;
-        session = new MediaSessionCompat(ctx, "Streambert");
+        session = new MediaSessionCompat(ctx, "Vidra");
         session.setCallback(new MediaSessionCompat.Callback() {
             @Override public void onPlay() { send("play", 0); }
             @Override public void onPause() { send("pause", 0); }
@@ -84,8 +84,8 @@ public final class MediaControl {
             return;
         }
         session.setMetadata(new MediaMetadataCompat.Builder()
-                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title.isEmpty() ? "Streambert" : title)
-                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, subtitle.isEmpty() ? "Streambert" : subtitle)
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title.isEmpty() ? "Vidra" : title)
+                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, subtitle.isEmpty() ? "Vidra" : subtitle)
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, durationMs)
                 .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, art)
                 .build());

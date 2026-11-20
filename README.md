@@ -1,6 +1,6 @@
-# Streambert Android
+# Vidra Android
 
-Android port of [Streambert](https://github.com/truelockmc/streambert) (Electron desktop app) — same UI, adapted for phones.
+Android app based on [Streambert](https://github.com/truelockmc/streambert) (Electron desktop app): the same UI, adapted for phones. Vidra was called "Streambert Android" until version 2.23.
 
 ## How it works
 - **UI**: the desktop React app (`src/`) almost unchanged, plus `src/styles/mobile.css` (bottom nav in portrait, side rail in landscape, touch sizing).
@@ -12,7 +12,7 @@ Android port of [Streambert](https://github.com/truelockmc/streambert) (Electron
   - `StreamProxy` — in-WebView media proxy that adds the Referer (replaces the desktop's local player server for HiAnime).
   - `Downloads` + `DownloadService` — native HLS downloader (best quality, 6 parallel connections, keys/init segments, background foreground-service). Pause/resume, auto-resume after the app was killed, Wi-Fi-only mode. Downloads play offline in-app.
   - `Remuxer` — converts finished HLS downloads into a single MP4 with MediaExtractor/MediaMuxer (no ffmpeg); AES-128 supported.
-  - `StorageMover` + `ContentServe` — save to app storage, public Movies/Streambert, or any folder picked with the system picker (SD cards too); picked-folder files are served to the player with range support.
+  - `StorageMover` + `ContentServe` — save to app storage, public Movies/Vidra, or any folder picked with the system picker (SD cards too); picked-folder files are served to the player with range support.
 - **HiAnime** resolver and **subtitles** (SubDL / Wyzie) ported to browser JS using native HTTP (no CORS).
 - **Picture-in-picture**: leaving the app while a video plays (or the pop-out button) shrinks it into a floating window.
 - **Lock-screen & notification controls** (`MediaControl` + `MediaPlaybackService`): play/pause/±10s from the lock screen, notification and headset buttons; playback continues with the screen off.
