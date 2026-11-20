@@ -431,6 +431,7 @@ const electron = {
     const b64 = String(dataUrl).split(",")[1] || "";
     return P.shareImage({ base64: b64, name: name || "streambert.png", text: text || "" });
   },
+  shareText: async ({ text, title }) => P.shareText({ text: String(text || ""), title: title || "Share" }),
   verifyUser: async (title) => !!(await P.verifyUser({ title: title || "Streambert" }))?.ok,
   networkInfo: async () => {
     try {

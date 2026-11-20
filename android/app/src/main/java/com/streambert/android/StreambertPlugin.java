@@ -720,6 +720,22 @@ public class StreambertPlugin extends Plugin {
         }
     }
 
+    /** Shares plain text (watch party invite) through the Android share sheet. */
+    @PluginMethod
+    public void shareText(PluginCall call) {
+        try {
+            Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, call.getString("text", ""));
+            Intent chooser = Intent.createChooser(send, call.getString("title", "Share"));
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(chooser);
+            JSObject r = new JSObject();
+            r.put("ok", true);
+            call.resolve(r);
+        } catch (Exception e) {
+            call.reject(String.valueOf(e.getMessage()));
+        }
+    }
+
     /** Fingerprint / phone PIN check (kids profile: unlock with the phone's own lock). */
     @PluginMethod
     public void verifyUser(PluginCall call) {
